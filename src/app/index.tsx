@@ -1,98 +1,118 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Avatar } from 'react-native-paper';
+import { Link } from 'expo-router';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const MyComponent = () => <Avatar.Text size={24} label="LS" />;
 
 export default function HomeScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.content}>
+        <HomeHeader />
+        <AddSchedule />
+        <FloatingActionButton />
+      </View>
+    </SafeAreaView>
   );
 }
 
+const FloatingActionButton = () => {
+  return (
+    <View style={styles.fabContainer}>
+      <Link href="/AddSchedule" asChild>
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.fabButton,
+            (pressed || hovered) && styles.fabButtonActive,
+          ]}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </Pressable>
+      </Link>
+    </View>
+  );
+};
+
+const HomeHeader = () => {
+  return (
+    <View style={styles.container}>
+      <MyComponent />
+      <Text style={styles.text}>Dashboard</Text>
+    </View>
+  );
+};
+
+const AddSchedule = () => {
+  return (
+    <View style={styles.scheduleBox}>
+      <Text style={styles.scheduleText}>Add the “+” to add a new schedule for the semester.</Text>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    backgroundColor: '#20084f',
   },
-  heroSection: {
+  content: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  container: {
+    width: '100%',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  text: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    flexShrink: 1,
+    color: 'white',
+    fontFamily: 'InterRegular',
+  },
+  scheduleBox: {
+    paddingHorizontal: 20,
+    marginTop: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
   },
-  title: {
+  scheduleText: {
+    fontSize: 16,
+    color: '#ffffff',
     textAlign: 'center',
+    paddingTop: 50
   },
-  code: {
-    textTransform: 'uppercase',
+  fabContainer: {
+    position: 'absolute',
+    left: 30,
+    bottom: 0,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  fabButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#208AEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 3},
+  },
+  fabButtonActive: {
+    backgroundColor: '#176bb8',
+    transform: [{ scale: 0.96 }],
+  },
+  fabText: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '600',
+    lineHeight: 28,
   },
 });
