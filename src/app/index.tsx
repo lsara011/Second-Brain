@@ -54,25 +54,35 @@ const AddSchedule = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#20084f',
+    backgroundColor: '',
   },
   content: {
     flex: 1,
     paddingTop: 16,
   },
   container: {
-    width: '100%',
+    width: 'auto',
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    height: 60,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderStyle: 'solid',
+    borderRadius: 10,
+    padding: 10,
+    margin: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 6 },
   },
   text: {
     fontSize: 20,
     fontWeight: 'bold',
     flexShrink: 1,
-    color: 'white',
+    color: 'black',
     fontFamily: 'InterRegular',
   },
   scheduleBox: {
@@ -83,7 +93,7 @@ const styles = StyleSheet.create({
   },
   scheduleText: {
     fontSize: 16,
-    color: '#ffffff',
+    color: '#000000',
     textAlign: 'center',
     paddingTop: 50
   },
@@ -110,9 +120,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   fabText: {
-    color: '#fff',
-    fontSize: 28,
+    color: '#000',
+    fontSize: 40,
     fontWeight: '600',
-    lineHeight: 28,
+    lineHeight: 80,
   },
 });
