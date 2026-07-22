@@ -83,16 +83,20 @@ export default function AddSchedule() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.text}>Add Schedule</Text>
-          <Text style={styles.subtitle}>Enter the details of the new schedule:</Text>
-          <TextInput style={styles.input} placeholder="Semester Name" />
+          <View style={styles.shadowContainer}>
+            <Text style={styles.text}>Add Schedule</Text>
+          </View>
 
-          <Pressable style={styles.AddButton} onPress={addClassCard}>
-            <Text style={styles.buttonText}>Add Class</Text>
-          </Pressable>
+          <View style={styles.formContainer}>
+            <Text style={styles.subtitle}>Enter the details of the new schedule:</Text>
+            <TextInput style={styles.input} placeholder="Semester Name" />
 
-          {classes.map((classCard) => (
-            <View key={classCard.id} style={styles.card}>
+            <Pressable style={styles.AddButton} onPress={addClassCard}>
+              <Text style={styles.buttonText}>Add Class</Text>
+            </Pressable>
+
+            {classes.map((classCard) => (
+              <View key={classCard.id} style={styles.card}>
               <TextInput
                 style={styles.input}
                 placeholder="Class Name"
@@ -143,18 +147,19 @@ export default function AddSchedule() {
               >
                 <Text style={styles.buttonText}>Delete Class</Text>
               </Pressable>
-            </View>
-          ))}
+              </View>
+            ))}
 
-          <Pressable style={styles.createButton} onPress={createClassObjects}>
-            <Text style={styles.buttonText}>Create Schedule</Text>
-          </Pressable>
+            <Pressable style={styles.createButton} onPress={createClassObjects}>
+              <Text style={styles.buttonText}>Create Schedule</Text>
+            </Pressable>
 
-          {createdClasses.length > 0 && (
-            <Text style={styles.createdText}>
-              {createdClasses.length} class object(s) ready.
-            </Text>
-          )}
+            {createdClasses.length > 0 && (
+              <Text style={styles.createdText}>
+                {createdClasses.length} class object(s) ready.
+              </Text>
+            )}
+          </View>
         </ScrollView>
 
         <Link href="/" asChild>
@@ -179,17 +184,42 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 24,
   },
+  shadowContainer: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 6},
+    marginBottom: 16,
+  },
+  formContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 6},
+  },
   text: {
     color: 'black',
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 16,
   },
   subtitle: {
     color: 'black',
     fontSize: 16,
-    fontWeight: '400',
+    fontWeight: '500',
     marginBottom: 16,
+    marginTop: 16
   },
   input: {
     borderWidth: 1,
@@ -198,6 +228,11 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     backgroundColor: '#f9f9f9',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 6},
   },
   descriptionInput: {
     minHeight: 96,
@@ -217,6 +252,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     marginBottom: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 6},
   },
   createButton: {
     backgroundColor: '#1B8A5A',
@@ -224,18 +264,33 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     marginBottom: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 6},
   },
   deleteButton: {
     backgroundColor: '#D64545',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 6},
   },
   createdText: {
     color: '#1B8A5A',
     fontWeight: '600',
     marginBottom: 16,
     textAlign: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 6},
   },
   button: {
     backgroundColor: '#208AEF',
@@ -243,6 +298,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     marginTop: 'auto',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 6},
   },
   buttonText: {
     color: 'white',
