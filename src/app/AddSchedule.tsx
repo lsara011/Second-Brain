@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { View, Text, Pressable, StyleSheet, TextInput, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
-
 interface ClassDescription {
   id: number;
   name: string;
@@ -18,7 +18,22 @@ export default function AddSchedule() {
   const [classes, setClasses] = useState<ClassDescription[]>([]);
   const [createdClasses, setCreatedClasses] = useState<ClassDescription[]>([]);
 
+  const isClassCardComplete = (classCard: ClassDescription) =>
+    classCard.name.trim().length > 0 &&
+    classCard.hours.trim().length > 0 &&
+    classCard.professor.trim().length > 0 &&
+    classCard.days.trim().length > 0 &&
+    classCard.location.trim().length > 0 &&
+    classCard.credits.trim().length > 0;
+
   const addClassCard = () => {
+    const currentClass = classes[classes.length - 1];
+
+    if (currentClass && !isClassCardComplete(currentClass)) {
+      Alert.alert('Finish the current class', 'Fill in every field before adding another class.');
+      return;
+    }
+
     setClasses((currentClasses) => [
       ...currentClasses,
       {
@@ -84,10 +99,15 @@ export default function AddSchedule() {
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.shadowContainer}>
-            <Text style={styles.text}>Add Schedule</Text>
+            <Animated.Text
+              style={styles.text}
+              entering={FadeIn.duration(500)}
+              exiting={FadeOut.duration(500)}
+            >
+              Add Schedule
+            </Animated.Text>
           </View>
-
-          <View style={styles.formContainer}>
+          <Animated.View style={styles.formContainer} entering={FadeIn.duration(500)} exiting={FadeOut.duration(500)}>
             <Text style={styles.subtitle}>Enter the details of the new schedule:</Text>
             <TextInput style={styles.input} placeholder="Semester Name" />
 
@@ -96,7 +116,13 @@ export default function AddSchedule() {
             </Pressable>
 
             {classes.map((classCard) => (
-              <View key={classCard.id} style={styles.card}>
+              <Animated.View
+                key={classCard.id}
+                style={styles.card}
+                entering={FadeInDown.duration(250)}
+                exiting={FadeOut.duration(200)}
+                layout={LinearTransition.duration(250)}
+              >
               <TextInput
                 style={styles.input}
                 placeholder="Class Name"
@@ -147,7 +173,7 @@ export default function AddSchedule() {
               >
                 <Text style={styles.buttonText}>Delete Class</Text>
               </Pressable>
-              </View>
+              </Animated.View>
             ))}
 
             <Pressable style={styles.createButton} onPress={createClassObjects}>
@@ -159,7 +185,7 @@ export default function AddSchedule() {
                 {createdClasses.length} class object(s) ready.
               </Text>
             )}
-          </View>
+          </Animated.View>
         </ScrollView>
 
         <Link href="/" asChild>

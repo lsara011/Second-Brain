@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut } from 'react-native-reanimated';
 import { Avatar } from 'react-native-paper';
 import { Link } from 'expo-router';
 
@@ -16,7 +17,6 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
-
 const FloatingActionButton = () => {
   return (
     <View style={styles.fabContainer}>
@@ -27,7 +27,7 @@ const FloatingActionButton = () => {
             (pressed || hovered) && styles.fabButtonActive,
           ]}
         >
-          <Text style={styles.fabText}>+</Text>
+          <Animated.Text style={styles.fabText} entering={FadeIn} exiting={FadeOut}>+</Animated.Text>
         </Pressable>
       </Link>
     </View>
@@ -36,18 +36,18 @@ const FloatingActionButton = () => {
 
 const HomeHeader = () => {
   return (
-    <View style={styles.container}>
+    <Animated.View style={styles.container} entering={FadeIn.duration(500)}>
       <MyComponent />
       <Text style={styles.text}>Dashboard</Text>
-    </View>
+    </Animated.View>
   );
 };
 
 const AddSchedule = () => {
   return (
-    <View style={styles.scheduleBox}>
+    <Animated.View style={styles.scheduleBox} entering={FadeIn.duration(500)}>
       <Text style={styles.scheduleText}>Add the “+” to add a new schedule for the semester.</Text>
-    </View>
+    </Animated.View>
   );
 };
 
