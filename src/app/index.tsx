@@ -1,39 +1,100 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Avatar } from 'react-native-paper';
-import { Link } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
+import { BottomNav } from '@/components/BottomNav';
+
+interface ClassRow {
+  schedule_id: number;
+  semester_name: string;
+  class_id: number | null;
+  name: string | null;
+  hours: string | null;
+  professor: string | null;
+  days: string | null;
+  location: string | null;
+}
+
+interface Schedule {
+  id: number;
+  semesterName: string;
+  classes: Omit<ClassRow, 'schedule_id' | 'semester_name'>[];
+}
 
 const MyComponent = () => <Avatar.Text size={24} label="LS" />;
 
 export default function HomeScreen() {
+  const db = useSQLiteContext();
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      const loadSchedules = async () => {
+        const rows = await db.getAllAsync<ClassRow>(`
+          SELECT
+            schedules.id AS schedule_id,
+            schedules.semester_name,
+            classes.id AS class_id,
+            classes.name,
+            classes.hours,
+            classes.professor,
+            classes.days,
+            classes.location
+          FROM schedules
+          LEFT JOIN classes ON classes.schedule_id = schedules.id
+          ORDER BY schedules.created_at DESC, classes.name ASC
+        `);
+
+        const groupedSchedules = Array.from(
+          rows.reduce((grouped, row) => {
+            let schedule = grouped.get(row.schedule_id);
+
+            if (!schedule) {
+              schedule = {
+                id: row.schedule_id,
+                semesterName: row.semester_name,
+                classes: [],
+              };
+              grouped.set(row.schedule_id, schedule);
+            }
+
+            if (row.class_id !== null) {
+              const { schedule_id, semester_name, ...classData } = row;
+              schedule.classes.push(classData);
+            }
+
+            return grouped;
+          }, new Map<number, Schedule>()).values()
+        );
+
+        if (active) setSchedules(groupedSchedules);
+      };
+
+      loadSchedules().catch((error) => {
+        console.error('Failed to load schedules:', error);
+      });
+
+      return () => {
+        active = false;
+      };
+    }, [db])
+  );
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.content}>
         <HomeHeader />
-        <AddSchedule />
-        <FloatingActionButton />
+        <ScheduleList schedules={schedules} />
+        <BottomNav />
       </View>
     </SafeAreaView>
   );
 }
-const FloatingActionButton = () => {
-  return (
-    <View style={styles.fabContainer}>
-      <Link href="/AddSchedule" asChild>
-        <Pressable
-          style={({ pressed, hovered }) => [
-            styles.fabButton,
-            (pressed || hovered) && styles.fabButtonActive,
-          ]}
-        >
-          <Animated.Text style={styles.fabText} entering={FadeIn} exiting={FadeOut}>+</Animated.Text>
-        </Pressable>
-      </Link>
-    </View>
-  );
-};
-
 const HomeHeader = () => {
   return (
     <Animated.View style={styles.container} entering={FadeIn.duration(500)}>
@@ -43,11 +104,34 @@ const HomeHeader = () => {
   );
 };
 
-const AddSchedule = () => {
+const ScheduleList = ({ schedules }: { schedules: Schedule[] }) => {
+  if (schedules.length === 0) {
+    return (
+      <View style={styles.scheduleBox}>
+        <Text style={styles.scheduleText}>Add the “+” to add a new schedule for the semester.</Text>
+      </View>
+    );
+  }
+
   return (
-    <Animated.View style={styles.scheduleBox} entering={FadeIn.duration(500)}>
-      <Text style={styles.scheduleText}>Add the “+” to add a new schedule for the semester.</Text>
-    </Animated.View>
+    <ScrollView style={styles.scheduleScroll} contentContainerStyle={styles.scheduleList}>
+      {schedules.map((schedule) => (
+        <Animated.View
+          key={schedule.id}
+          style={styles.semesterCard}
+          entering={FadeInDown.duration(350)}
+        >
+          <Text style={styles.semesterTitle}>{schedule.semesterName}</Text>
+          {schedule.classes.map((classItem) => (
+            <View key={classItem.class_id} style={styles.classRow}>
+              <Text style={styles.className}>{classItem.name}</Text>
+              <Text style={styles.classDetails}>{classItem.days} · {classItem.hours}</Text>
+              <Text style={styles.classDetails}>{classItem.location} · {classItem.professor}</Text>
+            </View>
+          ))}
+        </Animated.View>
+      ))}
+    </ScrollView>
   );
 };
 
@@ -86,6 +170,7 @@ const styles = StyleSheet.create({
     fontFamily: 'InterRegular',
   },
   scheduleBox: {
+    flex: 1,
     paddingHorizontal: 20,
     marginTop: 8,
     alignItems: 'center',
@@ -97,32 +182,40 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingTop: 50
   },
-  fabContainer: {
-    position: 'absolute',
-    left: 30,
-    bottom: 0,
+  scheduleList: {
+    paddingHorizontal: 16,
+    paddingBottom: 96,
   },
-  fabButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: {width: 0, height: 3},
+  scheduleScroll: {
+    flex: 1,
   },
-  fabButtonActive: {
-    backgroundColor: '#176bb8',
-    transform: [{ scale: 0.96 }],
+  semesterCard: {
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
-  fabText: {
-    color: '#000',
-    fontSize: 40,
+  semesterTitle: {
+    marginBottom: 10,
+    color: '#20084f',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  classRow: {
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  className: {
+    color: '#111',
+    fontSize: 17,
     fontWeight: '600',
-    lineHeight: 80,
+  },
+  classDetails: {
+    marginTop: 3,
+    color: '#555',
+    fontSize: 14,
   },
 });

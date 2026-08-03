@@ -2,18 +2,20 @@ import React, { useState } from 'react';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { View, Text, Pressable, StyleSheet, TextInput, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { isWeb, XStack, YStack, createCheckbox, styled } from 'tamagui';
 import { Toast, toast, type ToastT } from '@tamagui/toast/v2';
+import { useSQLiteContext } from 'expo-sqlite';
+import { BottomNav } from '@/components/BottomNav';
 interface ClassDescription {
   id: number;
   name: string;
-  hours: string;
+  startTime: string;
+  endTime: string;
   professor: string;
   description: string;
   days: string;
   location: string;
-  credits: string;
 }
 const CheckboxFrame = styled(YStack, {
   width: 28,
@@ -61,9 +63,25 @@ const DAYS = [
   { label: 'SU', value: 'SU' },
 ] as const;
 
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
+  const hour = Math.floor(index / 2);
+  const minute = index % 2 === 0 ? '00' : '30';
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+
+  return `${displayHour}:${minute} ${period}`;
+});
+
 export default function AddSchedule() {
+  const db = useSQLiteContext();
+  const router = useRouter();
   const [classes, setClasses] = useState<ClassDescription[]>([]);
   const [createdClasses, setCreatedClasses] = useState<ClassDescription[]>([]);
+  const [semesterName, setSemesterName] = useState('');
+  const [openTimePicker, setOpenTimePicker] = useState<{
+    classId: number;
+    field: 'startTime' | 'endTime';
+  } | null>(null);
 
   const toggleClassDay = (
     classId: number,
@@ -93,11 +111,11 @@ export default function AddSchedule() {
 
   const isClassCardComplete = (classCard: ClassDescription) =>
     classCard.name.trim().length > 0 &&
-    classCard.hours.trim().length > 0 &&
+    classCard.startTime.trim().length > 0 &&
+    classCard.endTime.trim().length > 0 &&
     classCard.professor.trim().length > 0 &&
     classCard.days.trim().length > 0 &&
-    classCard.location.trim().length > 0 &&
-    classCard.credits.trim().length > 0;
+    classCard.location.trim().length > 0;
 
   const addClassCard = () => {
     const currentClass = classes[classes.length - 1];
@@ -114,12 +132,12 @@ export default function AddSchedule() {
       {
         id: Date.now(),
         name: '',
-        hours: '',
+        startTime: '',
+        endTime: '',
         professor: '',
         description: '',
         days: '',
         location: '',
-        credits: '',
       },
     ]);
   };
@@ -145,7 +163,7 @@ export default function AddSchedule() {
     );
   };
 
-  const createClassObjects = () => {
+  const createClassObjects = async () => {
     if (classes.length === 0) {
       toast('Class not created', {
         description: 'Add at least one class first.',
@@ -167,7 +185,8 @@ export default function AddSchedule() {
     const completedClasses = classes.map((classCard) => ({
       ...classCard,
       name: classCard.name.trim(),
-      hours: classCard.hours.trim(),
+      startTime: classCard.startTime.trim(),
+      endTime: classCard.endTime.trim(),
       professor: classCard.professor.trim(),
       description: classCard.description.trim(),
       days: classCard.days.trim(),
@@ -175,11 +194,59 @@ export default function AddSchedule() {
     }));
 
     setCreatedClasses(completedClasses);
-    console.log('Created class objects:', completedClasses);
+    await saveScheduleToDatabase(completedClasses);
+  };
 
-    toast('Schedule created', {
-      description: `${completedClasses.length} class(es) created successfully.`,
-    });
+  const saveScheduleToDatabase = async (scheduleClasses = createdClasses) => {
+    const trimmedSemesterName = semesterName.trim();
+
+    if (!trimmedSemesterName || scheduleClasses.length === 0) {
+      toast('Schedule not saved', {
+        description: 'Enter a semester name and add at least one class.',
+      });
+      return;
+    }
+
+    try {
+      await db.withExclusiveTransactionAsync(async (transaction) => {
+        const scheduleResult = await transaction.runAsync(
+          'INSERT INTO schedules (semester_name, created_at) VALUES (?, ?)',
+          trimmedSemesterName,
+          new Date().toISOString()
+        );
+        const classStatement = await transaction.prepareAsync(
+          `INSERT INTO classes
+            (schedule_id, name, hours, professor, description, days, location)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        );
+
+        try {
+          for (const classCard of scheduleClasses) {
+            await classStatement.executeAsync(
+              scheduleResult.lastInsertRowId,
+              classCard.name,
+              `${classCard.startTime} - ${classCard.endTime}`,
+              classCard.professor,
+              classCard.description,
+              classCard.days,
+              classCard.location
+            );
+          }
+        } finally {
+          await classStatement.finalizeAsync();
+        }
+      });
+
+      console.log(
+        `Schedule saved: ${scheduleClasses.length} class(es) saved successfully.`
+      );
+      router.replace('/');
+    } catch (error) {
+      console.error('Failed to save schedule:', error);
+      toast('Schedule not saved', {
+        description: 'An error occurred while saving the schedule.',
+      });
+    }
   };
 
   return (
@@ -193,11 +260,10 @@ export default function AddSchedule() {
           )}
         />
       </Toast.Viewport>
-
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.container}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <View style={styles.shadowContainer}>
+            <Animated.View style={styles.shadowContainer} entering={FadeIn.duration(800)}>
               <Animated.Text
                 style={styles.text}
                 entering={FadeIn.duration(1200)}
@@ -205,11 +271,15 @@ export default function AddSchedule() {
               >
                 Add Schedule
               </Animated.Text>
-            </View>
+            </Animated.View>
             <Animated.View style={styles.formContainer} entering={FadeIn.duration(800)} exiting={FadeOut.duration(500)}>
               <Text style={styles.subtitle}>Enter the details of the new schedule:</Text>
               <Text style={styles.label}>Semester Name</Text>
-              <TextInput style={styles.input}/>
+              <TextInput
+                style={styles.input}
+                value={semesterName}
+                onChangeText={setSemesterName}
+              />
 
               <Pressable style={styles.AddButton} onPress={addClassCard}>
                 <Text style={styles.buttonText}>Add Class</Text>
@@ -229,11 +299,102 @@ export default function AddSchedule() {
                     onChangeText={(text) => updateClassCard(classCard.id, 'name', text)}
                   />
                   <Text style={styles.label}>Hours</Text>
-                  <TextInput
+                  <Pressable
                     style={styles.input}
-                    value={classCard.hours}
-                    onChangeText={(text) => updateClassCard(classCard.id, 'hours', text)}
-                  />
+                    onPress={() =>
+                      setOpenTimePicker((currentPicker) =>
+                        currentPicker?.classId === classCard.id &&
+                        currentPicker.field === 'startTime'
+                          ? null
+                          : { classId: classCard.id, field: 'startTime' }
+                      )
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel="Choose class time"
+                  >
+                    <Text style={classCard.startTime ? styles.timeText : styles.timePlaceholder}>
+                      {classCard.startTime || 'Start Time'}
+                    </Text>
+                  </Pressable>
+                  {openTimePicker?.classId === classCard.id &&
+                    openTimePicker.field === 'startTime' && (
+                    <ScrollView
+                      style={styles.timePicker}
+                      nestedScrollEnabled
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      {TIME_OPTIONS.map((time) => (
+                        <Pressable
+                          key={time}
+                          style={[
+                            styles.timeOption,
+                            classCard.startTime === time && styles.selectedTimeOption,
+                          ]}
+                          onPress={() => {
+                            updateClassCard(classCard.id, 'startTime', time);
+                            setOpenTimePicker(null);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.timeText,
+                              classCard.startTime === time && styles.selectedTimeText,
+                            ]}
+                          >
+                            {time}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  )}
+                  <Pressable
+                    style={styles.input}
+                    onPress={() =>
+                      setOpenTimePicker((currentPicker) =>
+                        currentPicker?.classId === classCard.id &&
+                        currentPicker.field === 'endTime'
+                          ? null
+                          : { classId: classCard.id, field: 'endTime' }
+                      )
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel="Choose class time"
+                  >
+                    <Text style={classCard.endTime ? styles.timeText : styles.timePlaceholder}>
+                      {classCard.endTime || 'End Time'}
+                    </Text>
+                  </Pressable>
+                  {openTimePicker?.classId === classCard.id &&
+                    openTimePicker.field === 'endTime' && (
+                    <ScrollView
+                      style={styles.timePicker}
+                      nestedScrollEnabled
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      {TIME_OPTIONS.map((time) => (
+                        <Pressable
+                          key={time}
+                          style={[
+                            styles.timeOption,
+                            classCard.endTime === time && styles.selectedTimeOption,
+                          ]}
+                          onPress={() => {
+                            updateClassCard(classCard.id, 'endTime', time);
+                            setOpenTimePicker(null);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.timeText,
+                              classCard.endTime === time && styles.selectedTimeText,
+                            ]}
+                          >
+                            {time}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  )}
                   <Text style={styles.label}>Days</Text>
                   <View style={styles.daysContainer}>
 
@@ -302,18 +463,13 @@ export default function AddSchedule() {
 
               {createdClasses.length > 0 && (
                 <Text style={styles.createdText}>
-                  {createdClasses.length} class object(s) ready.
+                  {createdClasses.length} class(es) saved.
                 </Text>
               )}
             </Animated.View>
           </ScrollView>
-
-          <Link href="/" asChild>
-            <Pressable style={styles.button}>
-              <Text style={styles.buttonText}>Go Back</Text>
-            </Pressable>
-          </Link>
         </View>
+        <BottomNav />
       </SafeAreaView>
     </Toast>
   );
@@ -432,6 +588,33 @@ const styles = StyleSheet.create({
     minHeight: 96,
     textAlignVertical: 'top',
   },
+  timePlaceholder: {
+    color: '#777',
+  },
+  timeText: {
+    color: '#222',
+    fontSize: 16,
+  },
+  timePicker: {
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginTop: -8,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+  },
+  timeOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  selectedTimeOption: {
+    backgroundColor: '#20084f',
+  },
+  selectedTimeText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
   card: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -480,18 +663,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
     textAlign: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  button: {
-    backgroundColor: '#208AEF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 'auto',
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.2,

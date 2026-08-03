@@ -31,6 +31,12 @@ async function initializeDatabase(db: SQLiteDatabase) {
         REFERENCES schedules(id)
         ON DELETE CASCADE
     );
+
+    CREATE INDEX IF NOT EXISTS idx_schedules_semester_name
+      ON schedules(semester_name);
+
+    CREATE INDEX IF NOT EXISTS idx_classes_schedule_id
+      ON classes(schedule_id);
   `);
 }
 
