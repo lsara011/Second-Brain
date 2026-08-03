@@ -21,7 +21,42 @@ The project is founded on a simple principle: AI should support learning, not re
 
 ## Current status
 
-SecondBrain is in early development. The current application provides the foundation for navigating between screens and creating a schedule with class information. AI assistance, authentication, persistent storage, and backend services are planned features and have not yet been implemented.
+SecondBrain is in active development. The application currently supports creating semester schedules, saving them locally on the device, and displaying saved classes on the dashboard. The AI companion, profile, and settings screens are scaffolded for future development. AI assistance, authentication, and remote backend services have not yet been implemented.
+
+## Implemented features
+
+- Create a schedule for a named semester.
+- Add multiple classes with names, start and end times, meeting days, professor, location, and an optional description.
+- Validate required schedule information before saving.
+- Persist schedules and classes locally with Expo SQLite.
+- Display saved semesters and their associated classes on the dashboard.
+- Automatically refresh the dashboard after a schedule is created.
+- Navigate between Dashboard, Add Class, AI Companion, Profile, and Settings using a shared bottom navigation bar.
+- Run on Android, iOS, and web through Expo.
+
+## Local database
+
+The application uses a persistent `second-brain.db` SQLite database. A schedule owns one or more classes through the `classes.schedule_id` foreign key:
+
+```text
+schedules
+├── id
+├── semester_name
+└── created_at
+       │
+       └── classes
+           ├── schedule_id
+           ├── name
+           ├── hours
+           ├── professor
+           ├── description
+           ├── days
+           └── location
+```
+
+Foreign-key enforcement and cascade deletion are enabled. Indexes support lookup by semester name and schedule ID.
+
+During development, inspect the on-device database by pressing `Shift + M` in the running Expo terminal and selecting **Open expo-sqlite**.
 
 ## Current technology
 
@@ -32,8 +67,11 @@ The client application currently uses:
 - **React Native 0.86** for creating native Android and iOS experiences from a shared codebase.
 - **Expo SDK 57** for development tooling, device capabilities, builds, and cross-platform support.
 - **Expo Router** for file-based navigation and screen transitions.
+- **Expo SQLite** for persistent on-device schedules and classes.
 - **React Native Paper** and **Expo UI** for interface components.
 - **React Native Reanimated** and **React Native Gesture Handler** for animations and interactions.
+- **Tamagui** for interface primitives and toast notifications.
+- **React Native SVG** for cross-platform navigation icons.
 - **React Native Web** so the application can also run in a browser.
 
 ## Planned architecture
@@ -88,7 +126,8 @@ SecondBrain should be designed to:
 
 ## Future roadmap
 
-- Persist schedules, courses, and assignments.
+- Add assignments and exam dates to saved schedules.
+- Add schedule editing and deletion.
 - Add accounts, authentication, and student profiles.
 - Build secure backend endpoints.
 - Integrate and evaluate AI providers.
@@ -110,7 +149,7 @@ SecondBrain should be designed to:
 
 ```bash
 npm install
-npx expo start
+npx expo start --clear
 ```
 
 You can also start a specific platform:
@@ -119,6 +158,12 @@ You can also start a specific platform:
 npm run android
 npm run ios
 npm run web
+```
+
+### Validate the project
+
+```bash
+npx tsc --noEmit
 ```
 
 ## Contributing
