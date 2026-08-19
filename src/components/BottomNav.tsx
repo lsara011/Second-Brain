@@ -48,7 +48,6 @@ export function BottomNav() {
                 pressed && styles.pressed,
               ]}
             >
-              {active && <View style={styles.activeIndicator} />}
               <View style={[styles.iconBadge, active && { backgroundColor: isDark ? '#214d75' : '#dceeff' }]}>
                 <Icon
                   size={24}
@@ -91,15 +90,6 @@ const styles = StyleSheet.create({
   itemDivider: {
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: '#d0d5dd',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    top: -8,
-    width: 30,
-    height: 3,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
-    backgroundColor: '#208AEF',
   },
   pressed: {
     opacity: 0.55,

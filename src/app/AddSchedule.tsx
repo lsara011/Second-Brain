@@ -8,6 +8,7 @@ import { Toast, toast, type ToastT } from '@tamagui/toast/v2';
 import { useSQLiteContext } from 'expo-sqlite';
 import { BottomNav } from '@/components/BottomNav';
 import { useAppTheme } from '@/context/AppTheme';
+import { CalendarPlus, Save, Trash2 } from '@tamagui/lucide-icons-2';
 interface ClassDescription {
   id: number;
   name: string;
@@ -76,7 +77,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
 export default function AddSchedule() {
   const db = useSQLiteContext();
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const themedInput = [
     styles.input,
     { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text },
@@ -288,8 +289,20 @@ export default function AddSchedule() {
                 placeholderTextColor={colors.textSecondary}
               />
 
-              <Pressable style={styles.AddButton} onPress={addClassCard}>
-                <Text style={styles.buttonText}>Add Class</Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.addButton,
+                  {
+                    backgroundColor: colors.activeSurface,
+                    borderColor: colors.primary,
+                  },
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={addClassCard}
+              >
+                <CalendarPlus size={19} color={colors.primary} />
+                <Text style={[styles.actionButtonText, { color: colors.primary }]}>Add Class</Text>
               </Pressable>
               {classes.map((classCard) => (
                 <Animated.View
@@ -458,16 +471,34 @@ export default function AddSchedule() {
                     onChangeText={(text) => updateClassCard(classCard.id, 'description', text)}
                   />
                   <Pressable
-                    style={styles.deleteButton}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      styles.deleteButton,
+                      {
+                        backgroundColor: isDark ? '#3b2022' : '#fff1f0',
+                        borderColor: colors.danger,
+                      },
+                      pressed && styles.buttonPressed,
+                    ]}
                     onPress={() => deleteClassCard(classCard.id)}
                   >
-                    <Text style={styles.buttonText}>Delete Class</Text>
+                    <Trash2 size={18} color={colors.danger} />
+                    <Text style={[styles.actionButtonText, { color: colors.danger }]}>Delete Class</Text>
                   </Pressable>
                 </Animated.View>
               ))}
 
-              <Pressable style={styles.createButton} onPress={createClassObjects}>
-                <Text style={styles.buttonText}>Create Schedule</Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.createButton,
+                  { backgroundColor: colors.primary },
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={createClassObjects}
+              >
+                <Save size={19} color="#fff" />
+                <Text style={[styles.actionButtonText, styles.primaryButtonText]}>Create Schedule</Text>
               </Pressable>
 
               {createdClasses.length > 0 && (
@@ -632,40 +663,43 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: '#ffffff',
   },
-  AddButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+  actionButton: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  addButton: {
     marginBottom: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 6 },
   },
   createButton: {
-    backgroundColor: '#1B8A5A',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
     marginBottom: 16,
-    elevation: 4,
+    borderColor: 'transparent',
+    elevation: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
   },
   deleteButton: {
-    backgroundColor: '#D64545',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 6 },
+    marginTop: 4,
+  },
+  buttonPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.985 }],
+  },
+  actionButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  primaryButtonText: {
+    color: '#fff',
   },
   createdText: {
     color: '#1B8A5A',
@@ -677,10 +711,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 6 },
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
   },
 });
