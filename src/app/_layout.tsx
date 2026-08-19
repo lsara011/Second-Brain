@@ -1,10 +1,12 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme, View } from 'react-native';
+import { View } from 'react-native';
 import { TamaguiProvider } from 'tamagui';
 import {SQLiteProvider, type SQLiteDatabase } from 'expo-sqlite';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import tamaguiConfig from '../../tamagui.config';
+import { AppThemeProvider, useAppTheme } from '@/context/AppTheme';
+import { StatusBar } from 'expo-status-bar';
 
 SplashScreen.preventAutoHideAsync();
 async function initializeDatabase(db: SQLiteDatabase) {
@@ -41,17 +43,27 @@ async function initializeDatabase(db: SQLiteDatabase) {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <SQLiteProvider databaseName="second-brain.db" onInit={initializeDatabase}>
+      <AppThemeProvider>
+        <AppLayout />
+      </AppThemeProvider>
+    </SQLiteProvider>
+  );
+}
+
+function AppLayout() {
+  const { resolvedMode, colors } = useAppTheme();
+
+  return (
     <TamaguiProvider
       config={tamaguiConfig}
-      defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}
+      defaultTheme={resolvedMode}
     >
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={resolvedMode === 'dark' ? DarkTheme : DefaultTheme}>
+        <StatusBar style={resolvedMode === 'dark' ? 'light' : 'dark'} />
         <AnimatedSplashOverlay />
-        <View style={{ flex: 1, backgroundColor: '#20084f' }}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
           <Stack
             screenOptions={{
               headerShown: false,
@@ -62,6 +74,5 @@ export default function TabLayout() {
         </View>
       </ThemeProvider>
     </TamaguiProvider>
-    </SQLiteProvider>
   );
 }

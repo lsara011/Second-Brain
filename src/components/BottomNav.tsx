@@ -8,6 +8,7 @@ import {
   Settings,
   UserRound,
 } from '@tamagui/lucide-icons-2';
+import { useAppTheme } from '@/context/AppTheme';
 
 const ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/' as Href },
@@ -20,9 +21,17 @@ const ITEMS = [
 export function BottomNav() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useAppTheme();
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={[
+      styles.container,
+      {
+        paddingBottom: Math.max(insets.bottom, 8),
+        backgroundColor: colors.surface,
+        borderTopColor: colors.border,
+      },
+    ]}>
       {ITEMS.map((item, index) => {
         const active = pathname === item.href;
         const Icon = item.icon;
@@ -34,17 +43,17 @@ export function BottomNav() {
               accessibilityLabel={item.label}
               style={({ pressed }) => [
                 styles.item,
-                index < ITEMS.length - 1 && styles.itemDivider,
-                active && styles.activeItem,
+                index < ITEMS.length - 1 && [styles.itemDivider, { borderRightColor: colors.border }],
+                active && { backgroundColor: colors.activeSurface },
                 pressed && styles.pressed,
               ]}
             >
               {active && <View style={styles.activeIndicator} />}
-              <View style={[styles.iconBadge, active && styles.activeIconBadge]}>
+              <View style={[styles.iconBadge, active && { backgroundColor: isDark ? '#214d75' : '#dceeff' }]}>
                 <Icon
                   size={24}
                   strokeWidth={active ? 2.5 : 2}
-                  color={active ? '#208AEF' : '#667085'}
+                  color={active ? colors.primary : colors.textSecondary}
                 />
               </View>
             </Pressable>
@@ -83,9 +92,6 @@ const styles = StyleSheet.create({
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: '#d0d5dd',
   },
-  activeItem: {
-    backgroundColor: '#f0f7ff',
-  },
   activeIndicator: {
     position: 'absolute',
     top: -8,
@@ -104,8 +110,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  activeIconBadge: {
-    backgroundColor: '#dceeff',
   },
 });

@@ -1,11 +1,22 @@
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Avatar } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { BottomNav } from '@/components/BottomNav';
+import { MoreVertical, Pencil, Trash2, CalendarPlus } from '@tamagui/lucide-icons-2';
+import { useAppTheme } from '@/context/AppTheme';
 
 interface ClassRow {
   schedule_id: number;
@@ -28,7 +39,57 @@ const MyComponent = () => <Avatar.Text size={24} label="LS" />;
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+  const { colors } = useAppTheme();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [semesterName, setSemesterName] = useState('');
+
+  const editSchedule = (schedule: Schedule) => {
+    setOpenMenuId(null);
+    setEditingSchedule(schedule);
+    setSemesterName(schedule.semesterName);
+  };
+
+  const saveSemesterName = async () => {
+    const name = semesterName.trim();
+    if (!editingSchedule || !name) return;
+
+    await db.runAsync(
+      'UPDATE schedules SET semester_name = ? WHERE id = ?',
+      name,
+      editingSchedule.id
+    );
+    setSchedules((current) =>
+      current.map((schedule) =>
+        schedule.id === editingSchedule.id
+          ? { ...schedule, semesterName: name }
+          : schedule
+      )
+    );
+    setEditingSchedule(null);
+  };
+
+  const deleteSchedule = (schedule: Schedule) => {
+    setOpenMenuId(null);
+    Alert.alert(
+      'Delete semester?',
+      `This will delete ${schedule.semesterName} and all of its classes.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await db.runAsync('DELETE FROM schedules WHERE id = ?', schedule.id);
+            setSchedules((current) =>
+              current.filter((item) => item.id !== schedule.id)
+            );
+          },
+        },
+      ]
+    );
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -86,30 +147,90 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.content}>
         <HomeHeader />
-        <ScheduleList schedules={schedules} />
+        <ScheduleList
+          schedules={schedules}
+          openMenuId={openMenuId}
+          onToggleMenu={(id) => setOpenMenuId((current) => current === id ? null : id)}
+          onEdit={editSchedule}
+          onDelete={deleteSchedule}
+        />
         <BottomNav />
       </View>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={editingSchedule !== null}
+        onRequestClose={() => setEditingSchedule(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setEditingSchedule(null)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: colors.surface }]} onPress={(event) => event.stopPropagation()}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit semester</Text>
+            <TextInput
+              style={[styles.modalInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}
+              value={semesterName}
+              onChangeText={setSemesterName}
+              placeholder="Semester name"
+              placeholderTextColor={colors.textSecondary}
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <Pressable style={[styles.cancelButton, { borderColor: colors.border }]} onPress={() => setEditingSchedule(null)}>
+                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.saveButton} onPress={saveSemesterName}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 const HomeHeader = () => {
+  const { colors } = useAppTheme();
   return (
-    <Animated.View style={styles.container} entering={FadeIn.duration(500)}>
+    <Animated.View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]} entering={FadeIn.duration(500)}>
       <MyComponent />
-      <Text style={styles.text}>Dashboard</Text>
+      <Text style={[styles.text, { color: colors.text }]}>Dashboard</Text>
     </Animated.View>
   );
 };
 
-const ScheduleList = ({ schedules }: { schedules: Schedule[] }) => {
+interface ScheduleListProps {
+  schedules: Schedule[];
+  openMenuId: number | null;
+  onToggleMenu: (id: number) => void;
+  onEdit: (schedule: Schedule) => void;
+  onDelete: (schedule: Schedule) => void;
+}
+
+const ScheduleList = ({
+  schedules,
+  openMenuId,
+  onToggleMenu,
+  onEdit,
+  onDelete,
+}: ScheduleListProps) => {
+  const { colors } = useAppTheme();
   if (schedules.length === 0) {
     return (
-      <View style={styles.scheduleBox}>
-        <Text style={styles.scheduleText}>Add the “+” to add a new schedule for the semester.</Text>
-      </View>
+      <Animated.View
+        style={styles.scheduleBox}
+        entering={FadeIn.duration(500)}
+        exiting={FadeOut.duration(300)}
+      >
+        <View style={styles.scheduleMessageRow}>
+          <Text style={[styles.scheduleText, { color: colors.textSecondary }]}>Select</Text>
+          <View style={[styles.scheduleIcon, { backgroundColor: colors.activeSurface }]}>
+            <CalendarPlus size={20} color={colors.primary} />
+          </View>
+          <Text style={[styles.scheduleText, { color: colors.textSecondary }]}>to add a new semester schedule.</Text>
+        </View>
+      </Animated.View>
     );
   }
 
@@ -118,15 +239,36 @@ const ScheduleList = ({ schedules }: { schedules: Schedule[] }) => {
       {schedules.map((schedule) => (
         <Animated.View
           key={schedule.id}
-          style={styles.semesterCard}
+          style={[styles.semesterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
           entering={FadeInDown.duration(350)}
         >
-          <Text style={styles.semesterTitle}>{schedule.semesterName}</Text>
+          <View style={styles.semesterHeader}>
+            <Text style={[styles.semesterTitle, { color: colors.primary }]}>{schedule.semesterName}</Text>
+            <Pressable
+              style={styles.menuButton}
+              onPress={() => onToggleMenu(schedule.id)}
+              accessibilityLabel={`Actions for ${schedule.semesterName}`}
+            >
+              <MoreVertical size={22} color={colors.textSecondary} />
+            </Pressable>
+            {openMenuId === schedule.id && (
+              <View style={[styles.actionMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Pressable style={styles.menuAction} onPress={() => onEdit(schedule)}>
+                  <Pencil size={17} color={colors.textSecondary} />
+                  <Text style={[styles.menuActionText, { color: colors.text }]}>Edit semester</Text>
+                </Pressable>
+                <Pressable style={styles.menuAction} onPress={() => onDelete(schedule)}>
+                  <Trash2 size={17} color={colors.danger} />
+                  <Text style={[styles.deleteActionText, { color: colors.danger }]}>Delete semester</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
           {schedule.classes.map((classItem) => (
-            <View key={classItem.class_id} style={styles.classRow}>
-              <Text style={styles.className}>{classItem.name}</Text>
-              <Text style={styles.classDetails}>{classItem.days} · {classItem.hours}</Text>
-              <Text style={styles.classDetails}>{classItem.location} · {classItem.professor}</Text>
+            <View key={classItem.class_id} style={[styles.classRow, { borderTopColor: colors.border }]}>
+              <Text style={[styles.className, { color: colors.text }]}>{classItem.name}</Text>
+              <Text style={[styles.classDetails, { color: colors.textSecondary }]}>{classItem.days} · {classItem.hours}</Text>
+              <Text style={[styles.classDetails, { color: colors.textSecondary }]}>{classItem.location} · {classItem.professor}</Text>
             </View>
           ))}
         </Animated.View>
@@ -171,16 +313,30 @@ const styles = StyleSheet.create({
   },
   scheduleBox: {
     flex: 1,
-    paddingHorizontal: 20,
-    marginTop: 8,
+    paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  scheduleMessageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  scheduleIcon: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#eaf4ff',
+  },
   scheduleText: {
     fontSize: 16,
-    color: '#000000',
+    lineHeight: 24,
+    color: '#475467',
     textAlign: 'center',
-    paddingTop: 50
   },
   scheduleList: {
     paddingHorizontal: 16,
@@ -198,10 +354,57 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   semesterTitle: {
-    marginBottom: 10,
+    flex: 1,
     color: '#20084f',
     fontSize: 20,
     fontWeight: '700',
+  },
+  semesterHeader: {
+    zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  menuButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  actionMenu: {
+    position: 'absolute',
+    top: 36,
+    right: 0,
+    zIndex: 10,
+    minWidth: 180,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e4e7ec',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  menuAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  menuActionText: {
+    color: '#344054',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  deleteActionText: {
+    color: '#d92d20',
+    fontSize: 14,
+    fontWeight: '500',
   },
   classRow: {
     paddingVertical: 10,
@@ -217,5 +420,61 @@ const styles = StyleSheet.create({
     marginTop: 3,
     color: '#555',
     fontSize: 14,
+  },
+  modalBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    padding: 20,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+  },
+  modalTitle: {
+    marginBottom: 16,
+    color: '#101828',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#101828',
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 18,
+  },
+  cancelButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: '#d0d5dd',
+  },
+  cancelButtonText: {
+    color: '#344054',
+    fontWeight: '600',
+  },
+  saveButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 9,
+    backgroundColor: '#208AEF',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: '700',
   },
 });

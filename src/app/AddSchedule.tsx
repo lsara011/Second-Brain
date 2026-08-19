@@ -7,6 +7,7 @@ import { isWeb, XStack, YStack, createCheckbox, styled } from 'tamagui';
 import { Toast, toast, type ToastT } from '@tamagui/toast/v2';
 import { useSQLiteContext } from 'expo-sqlite';
 import { BottomNav } from '@/components/BottomNav';
+import { useAppTheme } from '@/context/AppTheme';
 interface ClassDescription {
   id: number;
   name: string;
@@ -75,6 +76,11 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
 export default function AddSchedule() {
   const db = useSQLiteContext();
   const router = useRouter();
+  const { colors } = useAppTheme();
+  const themedInput = [
+    styles.input,
+    { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, color: colors.text },
+  ];
   const [classes, setClasses] = useState<ClassDescription[]>([]);
   const [createdClasses, setCreatedClasses] = useState<ClassDescription[]>([]);
   const [semesterName, setSemesterName] = useState('');
@@ -260,25 +266,26 @@ export default function AddSchedule() {
           )}
         />
       </Toast.Viewport>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <View style={styles.container}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Animated.View style={styles.shadowContainer} entering={FadeIn.duration(800)}>
+            <Animated.View style={[styles.shadowContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} entering={FadeIn.duration(800)}>
               <Animated.Text
-                style={styles.text}
+                style={[styles.text, { color: colors.text }]}
                 entering={FadeIn.duration(1200)}
                 exiting={FadeOut.duration(500)}
               >
                 Add Schedule
               </Animated.Text>
             </Animated.View>
-            <Animated.View style={styles.formContainer} entering={FadeIn.duration(800)} exiting={FadeOut.duration(500)}>
-              <Text style={styles.subtitle}>Enter the details of the new schedule:</Text>
-              <Text style={styles.label}>Semester Name</Text>
+            <Animated.View style={[styles.formContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} entering={FadeIn.duration(800)} exiting={FadeOut.duration(500)}>
+              <Text style={[styles.subtitle, { color: colors.text }]}>Enter the details of the new schedule:</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Semester Name</Text>
               <TextInput
-                style={styles.input}
+                style={themedInput}
                 value={semesterName}
                 onChangeText={setSemesterName}
+                placeholderTextColor={colors.textSecondary}
               />
 
               <Pressable style={styles.AddButton} onPress={addClassCard}>
@@ -287,20 +294,20 @@ export default function AddSchedule() {
               {classes.map((classCard) => (
                 <Animated.View
                   key={classCard.id}
-                  style={styles.card}
+                  style={[styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}
                   entering={FadeInDown.duration(250)}
                   exiting={FadeOut.duration(200)}
                   layout={LinearTransition.duration(250)}
                 >
-                  <Text style={styles.label}>Class Name</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Class Name</Text>
                   <TextInput
-                    style={styles.input}
+                    style={themedInput}
                     value={classCard.name}
                     onChangeText={(text) => updateClassCard(classCard.id, 'name', text)}
                   />
-                  <Text style={styles.label}>Hours</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Hours</Text>
                   <Pressable
-                    style={styles.input}
+                    style={themedInput}
                     onPress={() =>
                       setOpenTimePicker((currentPicker) =>
                         currentPicker?.classId === classCard.id &&
@@ -312,14 +319,14 @@ export default function AddSchedule() {
                     accessibilityRole="button"
                     accessibilityLabel="Choose class time"
                   >
-                    <Text style={classCard.startTime ? styles.timeText : styles.timePlaceholder}>
+                    <Text style={[classCard.startTime ? styles.timeText : styles.timePlaceholder, { color: classCard.startTime ? colors.text : colors.textSecondary }]}>
                       {classCard.startTime || 'Start Time'}
                     </Text>
                   </Pressable>
                   {openTimePicker?.classId === classCard.id &&
                     openTimePicker.field === 'startTime' && (
                     <ScrollView
-                      style={styles.timePicker}
+                      style={[styles.timePicker, { backgroundColor: colors.surface, borderColor: colors.border }]}
                       nestedScrollEnabled
                       keyboardShouldPersistTaps="handled"
                     >
@@ -338,6 +345,7 @@ export default function AddSchedule() {
                           <Text
                             style={[
                               styles.timeText,
+                              { color: colors.text },
                               classCard.startTime === time && styles.selectedTimeText,
                             ]}
                           >
@@ -348,7 +356,7 @@ export default function AddSchedule() {
                     </ScrollView>
                   )}
                   <Pressable
-                    style={styles.input}
+                    style={themedInput}
                     onPress={() =>
                       setOpenTimePicker((currentPicker) =>
                         currentPicker?.classId === classCard.id &&
@@ -360,14 +368,14 @@ export default function AddSchedule() {
                     accessibilityRole="button"
                     accessibilityLabel="Choose class time"
                   >
-                    <Text style={classCard.endTime ? styles.timeText : styles.timePlaceholder}>
+                    <Text style={[classCard.endTime ? styles.timeText : styles.timePlaceholder, { color: classCard.endTime ? colors.text : colors.textSecondary }]}>
                       {classCard.endTime || 'End Time'}
                     </Text>
                   </Pressable>
                   {openTimePicker?.classId === classCard.id &&
                     openTimePicker.field === 'endTime' && (
                     <ScrollView
-                      style={styles.timePicker}
+                      style={[styles.timePicker, { backgroundColor: colors.surface, borderColor: colors.border }]}
                       nestedScrollEnabled
                       keyboardShouldPersistTaps="handled"
                     >
@@ -386,6 +394,7 @@ export default function AddSchedule() {
                           <Text
                             style={[
                               styles.timeText,
+                              { color: colors.text },
                               classCard.endTime === time && styles.selectedTimeText,
                             ]}
                           >
@@ -395,7 +404,7 @@ export default function AddSchedule() {
                       ))}
                     </ScrollView>
                   )}
-                  <Text style={styles.label}>Days</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Days</Text>
                   <View style={styles.daysContainer}>
 
                     <XStack justifyContent="space-between">
@@ -412,7 +421,7 @@ export default function AddSchedule() {
                             alignItems="center"
                             gap="$1"
                           >
-                            <Text style={styles.dayLabel}>{day.label}</Text>
+                            <Text style={[styles.dayLabel, { color: colors.textSecondary }]}>{day.label}</Text>
 
                             <DayCheckbox
                               id={`${classCard.id}-${day.value}`}
@@ -429,21 +438,21 @@ export default function AddSchedule() {
                       })}
                     </XStack>
                   </View>
-                  <Text style={styles.label}>Professor</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Professor</Text>
                   <TextInput
-                    style={styles.input}
+                    style={themedInput}
                     value={classCard.professor}
                     onChangeText={(text) => updateClassCard(classCard.id, 'professor', text)}
                   />
-                  <Text style={styles.label}>Location</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Location</Text>
                   <TextInput
-                    style={styles.input}
+                    style={themedInput}
                     value={classCard.location}
                     onChangeText={(text) => updateClassCard(classCard.id, 'location', text)}
                   />
-                  <Text style={styles.label}>Description</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Description</Text>
                   <TextInput
-                    style={[styles.input, styles.descriptionInput]}
+                    style={[themedInput, styles.descriptionInput]}
                     multiline
                     value={classCard.description}
                     onChangeText={(text) => updateClassCard(classCard.id, 'description', text)}

@@ -4,11 +4,11 @@
     "slug": "SecondBrain",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/Second-Brain-2.png",
     "scheme": "secondbrain",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/Second-Brain-2.png"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,8 +28,8 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
+          "backgroundColor": "#000000",
+          "image": "./assets/images/Second-Brain-2.png",
           "imageWidth": 76
         }
       ],
