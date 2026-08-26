@@ -9,6 +9,10 @@ const OPTIONS: { label: string; value: ThemeMode; description: string }[] = [
   { label: 'Dark', value: 'dark', description: 'Always use the dark theme' },
 ];
 
+const handleLogout = () => {
+  console.log('Log out pressed');
+};
+
 export default function SettingsScreen() {
   const { mode, setMode, colors } = useAppTheme();
 
@@ -42,7 +46,21 @@ export default function SettingsScreen() {
               </Pressable>
             );
           })}
+
         </View>
+        <Pressable
+  onPress={handleLogout}
+  style={({ pressed }) => [
+    styles.logOutButton,
+    {
+      backgroundColor: colors.primary,
+      borderColor: colors.border,
+    },
+    pressed && styles.logOutButtonPressed,
+  ]}
+>
+  <Text style={styles.logOutText}>Log Out</Text>
+</Pressable>
       </View>
       <BottomNav />
     </SafeAreaView>
@@ -62,4 +80,7 @@ const styles = StyleSheet.create({
   radio: { width: 22, height: 22, borderWidth: 2, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
   pressed: { opacity: 0.65 },
+  logOutButton: { marginTop: 24, padding: 12, borderWidth: 1, borderColor:'#d0d5dd', backgroundColor: '#208AEF', borderRadius: 8 },
+  logOutText: {color: 'white', textAlign: 'center',fontWeight: '600'},
+  logOutButtonPressed: {opacity: 0.7,},
 });
