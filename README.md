@@ -5,7 +5,7 @@
   <img src="./assets/readme/second-brain-dark.png" alt="SecondBrain white logo on a dark background" width="48%" />
 </p>
 
-SecondBrain is an AI-powered study assistant designed for high school and university students. Its purpose is to help students organize their coursework, understand difficult concepts, prepare for exams, and build stronger study habits.
+SecondBrain is an AI-powered study assistant designed for high school and university students. It brings course organization and guided learning support into one cross-platform application, helping students manage their academic lives, understand difficult concepts, prepare for exams, and build stronger study habits.
 
 The project is founded on a simple principle: AI should support learning, not replace it. SecondBrain will guide students through problems, ask useful questions, explain ideas in different ways, and help create study plans. It will not complete coursework, assessments, or exams on a student's behalf. Educators remain essential to the learning process, and this application is intended to complement their teaching.
 
@@ -21,7 +21,9 @@ The project is founded on a simple principle: AI should support learning, not re
 
 ## Current status
 
-SecondBrain is in active development. The application currently supports creating semester schedules, saving them locally on the device, and displaying saved classes on the dashboard. The AI companion, profile, and settings screens are scaffolded for future development. AI assistance, authentication, and remote backend services have not yet been implemented.
+SecondBrain is in active development. The application currently supports creating semester schedules, saving them locally on the device, and displaying saved classes on the dashboard. The AI companion, profile, and settings screens are scaffolded for future development.
+
+A Django backend has been initialized to become the secure connection between the client, persistent server-side data, and AI services. OpenAI connectivity is being tested from this backend so provider credentials remain outside the mobile and web application. This is currently an integration experiment rather than a public application endpoint: the React Native client is not yet sending prompts to Django, and authentication, request validation, rate limiting, and production deployment still need to be implemented.
 
 ## Implemented features
 
@@ -33,6 +35,9 @@ SecondBrain is in active development. The application currently supports creatin
 - Automatically refresh the dashboard after a schedule is created.
 - Navigate between Dashboard, Add Class, AI Companion, Profile, and Settings using a shared bottom navigation bar.
 - Run on Android, iOS, and web through Expo.
+- Start and validate a Django development backend.
+- Keep local environment settings and AI credentials out of version control.
+- Verify that the backend can communicate with OpenAI without placing provider credentials in the client.
 
 ## Local database
 
@@ -74,34 +79,31 @@ The client application currently uses:
 - **React Native SVG** for cross-platform navigation icons.
 - **React Native Web** so the application can also run in a browser.
 
-## Planned architecture
+The backend foundation uses:
 
-The mobile application should communicate with a secure backend rather than calling an AI provider directly. This prevents provider API keys from being exposed in the app and gives the project one place to handle authentication, validation, rate limits, safety policies, and usage tracking.
+- **Python and Django** for the server application, administration tools, routing, and future API endpoints.
+- **SQLite** for local backend development and early data-model work.
+- **OpenAI's server-side SDK** for the initial AI connectivity experiment.
+- **Environment-based configuration** to keep credentials and deployment-specific settings separate from the source repository.
+
+## Backend and AI integration
+
+The mobile application will communicate with the Django backend rather than calling an AI provider directly. The backend receives an authenticated request, validates it, applies the application's learning and safety rules, communicates with the selected AI service, and returns an appropriate response to the student. This design keeps provider credentials away from distributed client builds and creates one controlled place for authentication, rate limits, safety policies, logging, and usage monitoring.
 
 ```text
 Expo / React Native application
               |
               | HTTPS requests
               v
-       Application API
+        Django API
       /               \
 Database         AI provider
-                 OpenAI, Gemini,
-                 or another provider
+                   OpenAI
 ```
 
-### Backend options
+The current AI experiment confirms that the server can request and receive generated text. It does not yet expose that behavior to the application. The next stage is to place the integration behind a dedicated Django endpoint and add safeguards before connecting the AI Companion screen.
 
-The API can be developed using either of these approaches:
-
-- **Python with FastAPI**: a strong option for AI workflows, data processing, typed request validation, and access to the broader Python machine-learning ecosystem.
-- **TypeScript/JavaScript with Node.js**: a strong option for sharing types and language knowledge between the React Native client and backend. Frameworks such as Express, Fastify, or NestJS could provide the API layer.
-
-The backend will expose endpoints for features such as schedules, study sessions, course materials, quizzes, and AI-guided conversations. It will also be responsible for protecting credentials and ensuring that student data is handled appropriately.
-
-### AI provider options
-
-The initial candidates are **OpenAI** and **Google Gemini**, but the architecture should avoid coupling the application to one provider. The final provider should be selected through practical evaluation of:
+The AI layer will be evaluated for:
 
 - Quality of explanations and tutoring behavior.
 - Ability to follow educational guardrails.
@@ -109,8 +111,6 @@ The initial candidates are **OpenAI** and **Google Gemini**, but the architectur
 - Privacy, security, and data-retention policies.
 - Latency, reliability, context limits, and cost.
 - Support for text, images, documents, and other useful learning formats.
-
-A provider-independent service layer would make it possible to test alternatives or change providers as the needs of the application evolve.
 
 ## Responsible AI principles
 
@@ -129,8 +129,9 @@ SecondBrain should be designed to:
 - Add assignments and exam dates to saved schedules.
 - Add schedule editing and deletion.
 - Add accounts, authentication, and student profiles.
-- Build secure backend endpoints.
-- Integrate and evaluate AI providers.
+- Build and connect secure Django API endpoints.
+- Move the OpenAI experiment behind a dedicated service and authenticated endpoint.
+- Add request validation, rate limiting, safety checks, and usage monitoring.
 - Add guided tutoring and concept explanations.
 - Generate quizzes, flashcards, and practice sessions.
 - Support document or course-note uploads with source-grounded answers.
