@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,12 +26,20 @@ SECRET_KEY = 'django-insecure-sgzq81#_m-a5^*r6ty+x4*f9w2jk)qd*v*f55&kh2y6_b1hj=s
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        'DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,10.0.2.2'
+    ).split(',')
+    if host.strip()
+]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
+    'assistant',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -115,6 +125,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# The browser build needs CORS during local development. Native apps do not
+# enforce browser CORS. Restrict this to explicit origins before deployment.
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 
 # Email

@@ -1,18 +1,16 @@
 import { useCallback, useState } from 'react';
 import {
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Avatar } from 'react-native-paper';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { BottomNav } from '@/components/BottomNav';
 import { MoreVertical, Pencil, Trash2, CalendarPlus } from '@tamagui/lucide-icons-2';
@@ -39,35 +37,14 @@ const MyComponent = () => <Avatar.Text size={24} label="LS" />;
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+  const router = useRouter();
   const { colors } = useAppTheme();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
-  const [semesterName, setSemesterName] = useState('');
 
   const editSchedule = (schedule: Schedule) => {
     setOpenMenuId(null);
-    setEditingSchedule(schedule);
-    setSemesterName(schedule.semesterName);
-  };
-
-  const saveSemesterName = async () => {
-    const name = semesterName.trim();
-    if (!editingSchedule || !name) return;
-
-    await db.runAsync(
-      'UPDATE schedules SET semester_name = ? WHERE id = ?',
-      name,
-      editingSchedule.id
-    );
-    setSchedules((current) =>
-      current.map((schedule) =>
-        schedule.id === editingSchedule.id
-          ? { ...schedule, semesterName: name }
-          : schedule
-      )
-    );
-    setEditingSchedule(null);
+    router.push({ pathname: '/AddSchedule', params: { scheduleId: String(schedule.id) } });
   };
 
   const deleteSchedule = (schedule: Schedule) => {
@@ -159,34 +136,6 @@ export default function HomeScreen() {
         />
         <BottomNav />
       </View>
-      <Modal
-        transparent
-        animationType="fade"
-        visible={editingSchedule !== null}
-        onRequestClose={() => setEditingSchedule(null)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setEditingSchedule(null)}>
-          <Pressable style={[styles.modalCard, { backgroundColor: colors.surface }]} onPress={(event) => event.stopPropagation()}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit semester</Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}
-              value={semesterName}
-              onChangeText={setSemesterName}
-              placeholder="Semester name"
-              placeholderTextColor={colors.textSecondary}
-              autoFocus
-            />
-            <View style={styles.modalActions}>
-              <Pressable style={[styles.cancelButton, { borderColor: colors.border }]} onPress={() => setEditingSchedule(null)}>
-                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.saveButton} onPress={saveSemesterName}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -255,7 +204,7 @@ const ScheduleList = ({
               <View style={[styles.actionMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Pressable style={styles.menuAction} onPress={() => onEdit(schedule)}>
                   <Pencil size={17} color={colors.textSecondary} />
-                  <Text style={[styles.menuActionText, { color: colors.text }]}>Edit semester</Text>
+                  <Text style={[styles.menuActionText, { color: colors.text }]}>Edit semester and classes</Text>
                 </Pressable>
                 <Pressable style={styles.menuAction} onPress={() => onDelete(schedule)}>
                   <Trash2 size={17} color={colors.danger} />

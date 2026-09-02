@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
-import { View, Text, Pressable, StyleSheet, TextInput, ScrollView } from 'react-native';
+import { Platform, View, Text, Pressable, StyleSheet, TextInput, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isWeb, XStack, YStack, createCheckbox, styled } from 'tamagui';
 import { Toast, toast, type ToastT } from '@tamagui/toast/v2';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -77,6 +77,9 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
 export default function AddSchedule() {
   const db = useSQLiteContext();
   const router = useRouter();
+  const { scheduleId } = useLocalSearchParams<{ scheduleId?: string }>();
+  const editingScheduleId = scheduleId ? Number(scheduleId) : null;
+  const isEditing = editingScheduleId !== null && Number.isInteger(editingScheduleId);
   const { colors, isDark } = useAppTheme();
   const themedInput = [
     styles.input,
@@ -89,6 +92,70 @@ export default function AddSchedule() {
     classId: number;
     field: 'startTime' | 'endTime';
   } | null>(null);
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    let active = true;
+
+    const loadSchedule = async () => {
+      const schedule = await db.getFirstAsync<{ semester_name: string }>(
+        'SELECT semester_name FROM schedules WHERE id = ?',
+        editingScheduleId
+      );
+      const savedClasses = await db.getAllAsync<{
+        id: number;
+        name: string;
+        hours: string;
+        professor: string;
+        description: string | null;
+        days: string;
+        location: string;
+      }>(
+        `SELECT id, name, hours, professor, description, days, location
+         FROM classes
+         WHERE schedule_id = ?
+         ORDER BY name ASC`,
+        editingScheduleId
+      );
+
+      if (!active) return;
+
+      if (!schedule) {
+        toast('Semester not found', {
+          description: 'The semester may have already been deleted.',
+        });
+        router.replace('/');
+        return;
+      }
+
+      setSemesterName(schedule.semester_name);
+      setClasses(savedClasses.map((classItem) => {
+        const [startTime = '', endTime = ''] = classItem.hours.split(' - ');
+        return {
+          id: classItem.id,
+          name: classItem.name,
+          startTime,
+          endTime,
+          professor: classItem.professor,
+          description: classItem.description ?? '',
+          days: classItem.days,
+          location: classItem.location,
+        };
+      }));
+    };
+
+    void loadSchedule().catch((error) => {
+      console.error('Failed to load semester for editing:', error);
+      toast('Semester not loaded', {
+        description: 'An error occurred while loading the semester.',
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [db, editingScheduleId, isEditing, router]);
 
   const toggleClassDay = (
     classId: number,
@@ -215,12 +282,28 @@ export default function AddSchedule() {
     }
 
     try {
-      await db.withExclusiveTransactionAsync(async (transaction) => {
-        const scheduleResult = await transaction.runAsync(
-          'INSERT INTO schedules (semester_name, created_at) VALUES (?, ?)',
-          trimmedSemesterName,
-          new Date().toISOString()
-        );
+      let savedScheduleId: number | null = null;
+      const saveSchedule = async (transaction = db) => {
+        if (isEditing) {
+          savedScheduleId = editingScheduleId;
+          await transaction.runAsync(
+            'UPDATE schedules SET semester_name = ? WHERE id = ?',
+            trimmedSemesterName,
+            editingScheduleId
+          );
+          await transaction.runAsync(
+            'DELETE FROM classes WHERE schedule_id = ?',
+            editingScheduleId
+          );
+        } else {
+          const scheduleResult = await transaction.runAsync(
+            'INSERT INTO schedules (semester_name, created_at) VALUES (?, ?)',
+            trimmedSemesterName,
+            new Date().toISOString()
+          );
+          savedScheduleId = scheduleResult.lastInsertRowId;
+        }
+
         const classStatement = await transaction.prepareAsync(
           `INSERT INTO classes
             (schedule_id, name, hours, professor, description, days, location)
@@ -230,7 +313,7 @@ export default function AddSchedule() {
         try {
           for (const classCard of scheduleClasses) {
             await classStatement.executeAsync(
-              scheduleResult.lastInsertRowId,
+              savedScheduleId,
               classCard.name,
               `${classCard.startTime} - ${classCard.endTime}`,
               classCard.professor,
@@ -242,10 +325,25 @@ export default function AddSchedule() {
         } finally {
           await classStatement.finalizeAsync();
         }
-      });
+      };
+
+      if (Platform.OS === 'web') {
+        await db.withTransactionAsync(() => saveSchedule(db));
+      } else {
+        await db.withExclusiveTransactionAsync(saveSchedule);
+      }
+
+      const savedClassCount = await db.getFirstAsync<{ count: number }>(
+        'SELECT COUNT(*) AS count FROM classes WHERE schedule_id = ?',
+        savedScheduleId
+      );
+
+      if (savedClassCount?.count !== scheduleClasses.length) {
+        throw new Error('The saved class count did not match the submitted classes.');
+      }
 
       console.log(
-        `Schedule saved: ${scheduleClasses.length} class(es) saved successfully.`
+        `Schedule ${isEditing ? 'updated' : 'created'}: ${scheduleClasses.length} class(es) saved successfully.`
       );
       router.replace('/');
     } catch (error) {
@@ -276,11 +374,15 @@ export default function AddSchedule() {
                 entering={FadeIn.duration(1200)}
                 exiting={FadeOut.duration(500)}
               >
-                Add Schedule
+                {isEditing ? 'Edit Schedule' : 'Add Schedule'}
               </Animated.Text>
             </Animated.View>
             <Animated.View style={[styles.formContainer, { backgroundColor: colors.surface, borderColor: colors.border }]} entering={FadeIn.duration(800)} exiting={FadeOut.duration(500)}>
-              <Text style={[styles.subtitle, { color: colors.text }]}>Enter the details of the new schedule:</Text>
+              <Text style={[styles.subtitle, { color: colors.text }]}>
+                {isEditing
+                  ? 'Update the semester and its classes:'
+                  : 'Enter the details of the new schedule:'}
+              </Text>
               <Text style={[styles.label, { color: colors.text }]}>Semester Name</Text>
               <TextInput
                 style={themedInput}
@@ -498,7 +600,9 @@ export default function AddSchedule() {
                 onPress={createClassObjects}
               >
                 <Save size={19} color="#fff" />
-                <Text style={[styles.actionButtonText, styles.primaryButtonText]}>Create Schedule</Text>
+                <Text style={[styles.actionButtonText, styles.primaryButtonText]}>
+                  {isEditing ? 'Save Changes' : 'Create Schedule'}
+                </Text>
               </Pressable>
 
               {createdClasses.length > 0 && (
