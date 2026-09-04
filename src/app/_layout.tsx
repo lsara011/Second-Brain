@@ -1,11 +1,12 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { TamaguiProvider } from 'tamagui';
 import {SQLiteProvider, type SQLiteDatabase } from 'expo-sqlite';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import tamaguiConfig from '../../tamagui.config';
 import { AppThemeProvider, useAppTheme } from '@/context/AppTheme';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { StatusBar } from 'expo-status-bar';
 
 SplashScreen.preventAutoHideAsync();
@@ -46,7 +47,9 @@ export default function TabLayout() {
   return (
     <SQLiteProvider databaseName="second-brain.db" onInit={initializeDatabase}>
       <AppThemeProvider>
-        <AppLayout />
+        <AuthProvider>
+          <AppLayout />
+        </AuthProvider>
       </AppThemeProvider>
     </SQLiteProvider>
   );
@@ -54,6 +57,7 @@ export default function TabLayout() {
 
 function AppLayout() {
   const { resolvedMode, colors } = useAppTheme();
+  const { session, isLoading } = useAuth();
 
   return (
     <TamaguiProvider
@@ -64,13 +68,31 @@ function AppLayout() {
         <StatusBar style={resolvedMode === 'dark' ? 'light' : 'dark'} />
         <AnimatedSplashOverlay />
         <View style={{ flex: 1, backgroundColor: colors.background }}>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'none',
-              presentation: 'card',
-            }}
-          />
+          {isLoading ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                animation: 'none',
+                presentation: 'card',
+              }}
+            >
+              <Stack.Protected guard={!session}>
+                <Stack.Screen name="login" />
+                <Stack.Screen name="signup" />
+              </Stack.Protected>
+              <Stack.Protected guard={!!session}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="AddSchedule" />
+                <Stack.Screen name="AICompanion" />
+                <Stack.Screen name="Profile" />
+                <Stack.Screen name="Settings" />
+              </Stack.Protected>
+            </Stack>
+          )}
         </View>
       </ThemeProvider>
     </TamaguiProvider>

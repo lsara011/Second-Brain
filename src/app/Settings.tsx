@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BottomNav } from '@/components/BottomNav';
 import { ThemeMode, useAppTheme } from '@/context/AppTheme';
+import { supabase } from '../../utils/supabase';
 
 const OPTIONS: { label: string; value: ThemeMode; description: string }[] = [
   { label: 'Automatic', value: 'automatic', description: 'Match your device appearance' },
@@ -9,12 +10,17 @@ const OPTIONS: { label: string; value: ThemeMode; description: string }[] = [
   { label: 'Dark', value: 'dark', description: 'Always use the dark theme' },
 ];
 
-const handleLogout = () => {
-  console.log('Log out pressed');
-};
-
 export default function SettingsScreen() {
   const { mode, setMode, colors } = useAppTheme();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) console.error('Logout failed:', error.message);
+    } catch {
+      console.error('Unable to reach the authentication service.');
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>

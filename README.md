@@ -21,9 +21,9 @@ The project is founded on a simple principle: AI should support learning, not re
 
 ## Current status
 
-SecondBrain is in active development. The application currently supports creating semester schedules, saving them locally on the device, and displaying saved classes on the dashboard. The AI companion, profile, and settings screens are scaffolded for future development.
+SecondBrain is in active development. The application supports account creation and login, protected application routes, editable student profiles, semester schedule creation, local class storage, dashboard views, theme settings, and an AI study companion that can answer questions in the context of a selected class.
 
-A Django backend has been initialized to become the secure connection between the client, persistent server-side data, and AI services. OpenAI connectivity is being tested from this backend so provider credentials remain outside the mobile and web application. This is currently an integration experiment rather than a public application endpoint: the React Native client is not yet sending prompts to Django, and authentication, request validation, rate limiting, and production deployment still need to be implemented.
+Supabase Authentication manages user accounts and persistent login sessions. The Django backend provides the development-only connection to OpenAI so provider credentials remain outside the mobile and web application. The AI Companion currently sends the selected class and the student's question to this backend. Authentication of Django API requests, rate limiting, production deployment, and cloud synchronization of schedules still need to be implemented before public release.
 
 ## Implemented features
 
@@ -34,6 +34,14 @@ A Django backend has been initialized to become the secure connection between th
 - Display saved semesters and their associated classes on the dashboard.
 - Automatically refresh the dashboard after a schedule is created.
 - Navigate between Dashboard, Add Class, AI Companion, Profile, and Settings using a shared bottom navigation bar.
+- Create accounts and sign in with email and password through Supabase Authentication.
+- Restore authenticated sessions and protect application screens from signed-out users.
+- Sign out from the Settings screen.
+- View and edit a student profile containing a name, grade, graduation year, major, email, and profile-photo URL.
+- Save editable profile information to the authenticated user's Supabase metadata.
+- Switch between automatic, light, and dark appearance modes.
+- Select a class from the current semester as the context for an AI Companion conversation.
+- Send a question from the AI Companion to the local Django API and display the response.
 - Run on Android, iOS, and web through Expo.
 - Start and validate a Django development backend.
 - Keep local environment settings and AI credentials out of version control.
@@ -73,6 +81,7 @@ The client application currently uses:
 - **Expo SDK 57** for development tooling, device capabilities, builds, and cross-platform support.
 - **Expo Router** for file-based navigation and screen transitions.
 - **Expo SQLite** for persistent on-device schedules and classes.
+- **Supabase Authentication** for accounts, persistent sessions, and user profile metadata.
 - **React Native Paper** and **Expo UI** for interface components.
 - **React Native Reanimated** and **React Native Gesture Handler** for animations and interactions.
 - **Tamagui** for interface primitives and toast notifications.
@@ -85,6 +94,12 @@ The backend foundation uses:
 - **SQLite** for local backend development and early data-model work.
 - **OpenAI's server-side SDK** for the initial AI connectivity experiment.
 - **Environment-based configuration** to keep credentials and deployment-specific settings separate from the source repository.
+
+## Authentication and profiles
+
+Signed-out users can access only the login and signup screens. After authentication, Expo Router makes the main application routes available and restores the session when the application starts again.
+
+The Profile screen reads the signed-in user's email and metadata from Supabase. Students can update their name, grade, graduation year, major, and a profile-photo URL. When no photo is available, the interface displays the student's initials. Schedules and classes are still device-local, so they do not currently follow a user to another device.
 
 ## Backend and AI integration
 
@@ -101,7 +116,9 @@ Database         AI provider
                    OpenAI
 ```
 
-The current AI experiment confirms that the server can request and receive generated text. It does not yet expose that behavior to the application. The next stage is to place the integration behind a dedicated Django endpoint and add safeguards before connecting the AI Companion screen.
+The current development integration allows the AI Companion screen to call a dedicated Django endpoint. The student must choose a class from the most recently created semester before sending a question. Django validates the request, adds the selected course as context, applies the Atlas tutoring instructions, requests a response from OpenAI, and returns the generated text to the application.
+
+This endpoint is intentionally available only while Django is in development mode. It does not yet validate a Supabase access token, so it must not be deployed publicly in its current form.
 
 The AI layer will be evaluated for:
 
@@ -128,9 +145,10 @@ SecondBrain should be designed to:
 
 - Add assignments and exam dates to saved schedules.
 - Add schedule editing and deletion.
-- Add accounts, authentication, and student profiles.
-- Build and connect secure Django API endpoints.
-- Move the OpenAI experiment behind a dedicated service and authenticated endpoint.
+- Add direct profile-photo selection and secure uploads with Supabase Storage.
+- Synchronize schedules and classes with authenticated cloud accounts.
+- Validate Supabase access tokens on Django API requests.
+- Add production-ready Django API authentication and deployment configuration.
 - Add request validation, rate limiting, safety checks, and usage monitoring.
 - Add guided tutoring and concept explanations.
 - Generate quizzes, flashcards, and practice sessions.
@@ -148,6 +166,16 @@ SecondBrain should be designed to:
 
 ### Run the application
 
+Create a local `.env.local` file in the project root. Supply your own values and never commit this file:
+
+```dotenv
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
+EXPO_PUBLIC_SUPABASE_KEY=your_supabase_publishable_or_anon_key
+EXPO_PUBLIC_API_URL=http://your_backend_address:8000
+```
+
+The Supabase publishable or anonymous key is intended for client initialization. Never place a Supabase `service_role` key, an OpenAI API key, or another private server credential in an `EXPO_PUBLIC_` variable.
+
 ```bash
 npm install
 npx expo start --clear
@@ -161,11 +189,32 @@ npm run ios
 npm run web
 ```
 
+### Run the development backend
+
+Set `OPENAI_API_KEY` in the backend process environment, then start Django from the `server` directory using the project's Python environment. The current Django settings do not load `server/.env` automatically.
+
+```bash
+cd server
+export OPENAI_API_KEY=your_openai_api_key
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+```
+
+For an iOS simulator or local web browser, the API URL can normally use `127.0.0.1`. The Android emulator uses `10.0.2.2` to reach the host computer. A physical phone must use the development computer's local network address, and Django must allow that host.
+
 ### Validate the project
 
 ```bash
 npx tsc --noEmit
+cd server && python manage.py test
 ```
+
+## Security notes
+
+- Local environment files are ignored by Git; `.env.example` files may contain variable names but must never contain real credentials.
+- AI provider credentials belong only on the Django server.
+- Supabase Row Level Security should protect any future cloud database tables or storage buckets.
+- The current Django AI endpoint is for local development and requires authentication and rate limiting before deployment.
 
 ## Contributing
 

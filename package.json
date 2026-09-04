@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~57.0.8",
     "@react-native-masked-view/masked-view": "0.3.2",
+    "@supabase/supabase-js": "^2.115.0",
     "@tamagui/config-default": "2.6.2",
     "@tamagui/lucide-icons-2": "^2.6.2",
     "@tamagui/toast": "2.6.2",
