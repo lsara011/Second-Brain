@@ -21,9 +21,9 @@ The project is founded on a simple principle: AI should support learning, not re
 
 ## Current status
 
-SecondBrain is in active development. The application supports account creation and login, protected application routes, editable student profiles, semester schedule creation, local class storage, dashboard views, theme settings, and an AI study companion that can answer questions in the context of a selected class.
+SecondBrain is in active development. The application supports account creation and login, protected application routes, editable student profiles, semester schedule creation, local class storage, dashboard views, theme settings, and a conversational AI study companion that answers questions in the context of a selected class.
 
-Supabase Authentication manages user accounts and persistent login sessions. The Django backend provides the development-only connection to OpenAI so provider credentials remain outside the mobile and web application. The AI Companion currently sends the selected class and the student's question to this backend. Authentication of Django API requests, rate limiting, production deployment, and cloud synchronization of schedules still need to be implemented before public release.
+Supabase Authentication manages user accounts and persistent login sessions. The Django backend provides the development-only connection to OpenAI so provider credentials remain outside the mobile and web application. The AI Companion provides a two-sided chat interface, formatted Markdown and code output, typewriter-style responses, and device-local conversation history. Authentication of Django API requests, rate limiting, production deployment, and cloud synchronization of application data still need to be implemented before public release.
 
 ## Implemented features
 
@@ -42,6 +42,13 @@ Supabase Authentication manages user accounts and persistent login sessions. The
 - Switch between automatic, light, and dark appearance modes.
 - Select a class from the current semester as the context for an AI Companion conversation.
 - Send a question from the AI Companion to the local Django API and display the response.
+- Display user and Atlas messages as separate, aligned chat bubbles.
+- Show an Atlas thinking state followed by a character-by-character response animation.
+- Render AI responses as themed Markdown, including headings, emphasis, lists, links, quotations, inline code, and fenced code blocks.
+- Save AI conversations and messages locally for each signed-in user.
+- Automatically title conversations from their first user message.
+- Browse and restore previous chats, start new conversations, and permanently delete saved conversations.
+- Include recent saved messages when continuing a conversation so Atlas retains context.
 - Run on Android, iOS, and web through Expo.
 - Start and validate a Django development backend.
 - Keep local environment settings and AI credentials out of version control.
@@ -69,6 +76,27 @@ schedules
 
 Foreign-key enforcement and cascade deletion are enabled. Indexes support lookup by semester name and schedule ID.
 
+AI chat history is also stored in SQLite. An `ai_conversations` record belongs to a Supabase user and course, while its ordered `ai_messages` records contain the user and assistant turns. Deleting a conversation automatically deletes its messages. This history remains on the current device and is not yet synchronized through Supabase.
+
+```text
+ai_conversations
+├── id
+├── user_id
+├── course_id
+├── course_name
+├── title
+├── created_at
+└── updated_at
+       │
+       └── ai_messages
+           ├── conversation_id
+           ├── role
+           ├── content
+           └── created_at
+```
+
+Messages are saved as they are created. The complete assistant response is written to SQLite before the visual typewriter animation begins, reducing the chance of losing a completed response when navigating away from the screen.
+
 During development, inspect the on-device database by pressing `Shift + M` in the running Expo terminal and selecting **Open expo-sqlite**.
 
 ## Current technology
@@ -80,8 +108,10 @@ The client application currently uses:
 - **React Native 0.86** for creating native Android and iOS experiences from a shared codebase.
 - **Expo SDK 57** for development tooling, device capabilities, builds, and cross-platform support.
 - **Expo Router** for file-based navigation and screen transitions.
-- **Expo SQLite** for persistent on-device schedules and classes.
+- **Expo SQLite** for persistent on-device schedules, classes, and AI conversations.
 - **Supabase Authentication** for accounts, persistent sessions, and user profile metadata.
+- **React Native Markdown Display** for rendering structured AI responses and code blocks.
+- **Punycode** as the native Metro compatibility dependency required by the Markdown parser.
 - **React Native Paper** and **Expo UI** for interface components.
 - **React Native Reanimated** and **React Native Gesture Handler** for animations and interactions.
 - **Tamagui** for interface primitives and toast notifications.
@@ -90,9 +120,9 @@ The client application currently uses:
 
 The backend foundation uses:
 
-- **Python and Django** for the server application, administration tools, routing, and future API endpoints.
+- **Python and Django** for the server application, administration tools, routing, request validation, and the development AI endpoint.
 - **SQLite** for local backend development and early data-model work.
-- **OpenAI's server-side SDK** for the initial AI connectivity experiment.
+- **OpenAI's server-side SDK and Responses API** for Atlas tutoring responses.
 - **Environment-based configuration** to keep credentials and deployment-specific settings separate from the source repository.
 
 ## Authentication and profiles
@@ -103,20 +133,25 @@ The Profile screen reads the signed-in user's email and metadata from Supabase. 
 
 ## Backend and AI integration
 
-The mobile application will communicate with the Django backend rather than calling an AI provider directly. The backend receives an authenticated request, validates it, applies the application's learning and safety rules, communicates with the selected AI service, and returns an appropriate response to the student. This design keeps provider credentials away from distributed client builds and creates one controlled place for authentication, rate limits, safety policies, logging, and usage monitoring.
+The mobile application communicates with the Django backend rather than calling an AI provider directly. Django validates the request content, applies the application's learning rules, communicates with the selected AI service, and returns an appropriate response to the student. This design keeps provider credentials away from distributed client builds and provides one controlled place to add authentication, rate limits, safety policies, logging, and usage monitoring. Supabase-token validation has not yet been added to this development endpoint.
 
 ```text
-Expo / React Native application
-              |
-              | HTTPS requests
-              v
-        Django API
-      /               \
-Database         AI provider
-                   OpenAI
+                        Supabase Authentication
+                                  |
+                                  v
+Expo / React Native application ──┬── Expo SQLite
+                                  |
+                                  | HTTP(S) AI requests
+                                  v
+                             Django API
+                                  |
+                                  v
+                                OpenAI
 ```
 
-The current development integration allows the AI Companion screen to call a dedicated Django endpoint. The student must choose a class from the most recently created semester before sending a question. Django validates the request, adds the selected course as context, applies the Atlas tutoring instructions, requests a response from OpenAI, and returns the generated text to the application.
+The current development integration allows the AI Companion screen to call a dedicated Django endpoint. The student must choose a class from the most recently created semester before starting a new conversation. Django validates the question, selected course, and up to 20 recent conversation messages. It then applies the Atlas tutoring and Markdown-formatting instructions, requests a response from OpenAI, and returns the generated text to the application.
+
+The client stores the complete response before revealing it through the typewriter animation. When the student continues a restored conversation, recent saved messages are included in the next request so Atlas can follow the discussion instead of treating every question as unrelated.
 
 This endpoint is intentionally available only while Django is in development mode. It does not yet validate a Supabase access token, so it must not be deployed publicly in its current form.
 
@@ -146,7 +181,7 @@ SecondBrain should be designed to:
 - Add assignments and exam dates to saved schedules.
 - Add schedule editing and deletion.
 - Add direct profile-photo selection and secure uploads with Supabase Storage.
-- Synchronize schedules and classes with authenticated cloud accounts.
+- Synchronize schedules, classes, and conversation history with authenticated cloud accounts.
 - Validate Supabase access tokens on Django API requests.
 - Add production-ready Django API authentication and deployment configuration.
 - Add request validation, rate limiting, safety checks, and usage monitoring.
@@ -162,6 +197,8 @@ SecondBrain should be designed to:
 
 - Node.js 22.13 or newer
 - npm
+- Python with the backend virtual environment and dependencies installed
+- Supabase and OpenAI API projects for authentication and AI features
 - Expo Go, an Android emulator, an iOS simulator, or a web browser
 
 ### Run the application
@@ -191,13 +228,20 @@ npm run web
 
 ### Run the development backend
 
-Set `OPENAI_API_KEY` in the backend process environment, then start Django from the `server` directory using the project's Python environment. The current Django settings do not load `server/.env` automatically.
+Create `server/.env` with the private backend settings required by your local environment. This file is ignored by Git. The current Django settings do not load it automatically, so export its variables into the terminal session before starting the server:
+
+```dotenv
+OPENAI_API_KEY=your_private_openai_api_key
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,10.0.2.2,your_computer_lan_address
+```
 
 ```bash
 cd server
-export OPENAI_API_KEY=your_openai_api_key
-python manage.py migrate
-python manage.py runserver 0.0.0.0:8000
+set -a
+source .env
+set +a
+./.venv/bin/python manage.py migrate
+./.venv/bin/python manage.py runserver 0.0.0.0:8000
 ```
 
 For an iOS simulator or local web browser, the API URL can normally use `127.0.0.1`. The Android emulator uses `10.0.2.2` to reach the host computer. A physical phone must use the development computer's local network address, and Django must allow that host.
@@ -206,7 +250,8 @@ For an iOS simulator or local web browser, the API URL can normally use `127.0.0
 
 ```bash
 npx tsc --noEmit
-cd server && python manage.py test
+./server/.venv/bin/python server/manage.py check
+./server/.venv/bin/python server/manage.py test
 ```
 
 ## Security notes

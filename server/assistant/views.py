@@ -35,6 +35,28 @@ def respond(request):
     if len(course) > 200:
         return JsonResponse({"error": "Course must be 200 characters or fewer."}, status=400)
 
+    history = payload.get("history", [])
+    if not isinstance(history, list) or len(history) > 20:
+        return JsonResponse({"error": "History must contain at most 20 messages."}, status=400)
+
+    conversation_input = []
+    for item in history:
+        if not isinstance(item, dict):
+            return JsonResponse({"error": "History contains an invalid message."}, status=400)
+        role = item.get("role")
+        content = item.get("content")
+        if role not in {"user", "assistant"} or not isinstance(content, str):
+            return JsonResponse({"error": "History contains an invalid message."}, status=400)
+        content = content.strip()
+        if not content or len(content) > 10000:
+            return JsonResponse({"error": "A history message is invalid."}, status=400)
+        conversation_input.append({"role": role, "content": content})
+
+    conversation_input.append({
+        "role": "user",
+        "content": f"Course selected by the student: {course}\nStudent question: {message}",
+    })
+
     try:
         response = OpenAI().responses.create(
             model="gpt-5.6-luna",
@@ -42,9 +64,12 @@ def respond(request):
             instructions=(
                 "You are Atlas, a study companion. Help the student understand "
                 "their work with concise explanations, hints, and questions. "
-                "Do not complete graded assignments or exams for them."
+                "Do not complete graded assignments or exams for them. "
+                "Use clear Markdown when structure helps. Put all code in fenced "
+                "Markdown code blocks and include the programming language after "
+                "the opening fence when it is known."
             ),
-            input=f"Course selected by the student: {course}\nStudent question: {message}",
+            input=conversation_input,
             max_output_tokens=500,
         )
     except OpenAIError:
