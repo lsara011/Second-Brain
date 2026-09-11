@@ -4,11 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import Markdown from 'react-native-markdown-display';
 import { BottomNav } from '@/components/BottomNav';
 import { useAppTheme } from '@/context/AppTheme';
 import { useAuth } from '@/context/AuthContext';
 import { AtlasLogo } from '@/components/ui/AtlasLogo';
+import { SafeMarkdown } from '@/components/SafeMarkdown';
 import { Check, ChevronDown, ChevronUp, History, Plus, Send, Trash2, X } from '@tamagui/lucide-icons-2';
 import { Adapt, Select, Sheet, YStack } from 'tamagui';
 
@@ -41,6 +41,7 @@ const WELCOME_MESSAGE: ChatMessage = {
 export default function AICompanionScreen() {
   const { colors } = useAppTheme();
   const { session } = useAuth();
+  const userId = session?.user.id;
   const db = useSQLiteContext();
   const chatScrollRef = useRef<ScrollView>(null);
   const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -62,64 +63,6 @@ export default function AICompanionScreen() {
     ? { id: activeConversation.courseId, name: activeConversation.courseName }
     : selectedCourse;
   const canSend = message.trim().length > 0 && !!courseContext && !isSending && !isTyping;
-  const markdownStyles = useMemo(
-    () => ({
-      body: { color: colors.text, fontSize: 16, lineHeight: 25 },
-      paragraph: { marginTop: 0, marginBottom: 12 },
-      heading1: { color: colors.text, fontSize: 25, lineHeight: 32, fontWeight: '800' as const, marginTop: 8, marginBottom: 12 },
-      heading2: { color: colors.text, fontSize: 21, lineHeight: 28, fontWeight: '800' as const, marginTop: 8, marginBottom: 10 },
-      heading3: { color: colors.text, fontSize: 18, lineHeight: 25, fontWeight: '700' as const, marginTop: 6, marginBottom: 8 },
-      strong: { color: colors.text, fontWeight: '800' as const },
-      em: { color: colors.text },
-      bullet_list: { marginBottom: 12 },
-      ordered_list: { marginBottom: 12 },
-      list_item: { marginBottom: 5 },
-      blockquote: {
-        backgroundColor: colors.surfaceSecondary,
-        borderLeftColor: colors.primary,
-        borderLeftWidth: 4,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginVertical: 8,
-      },
-      code_inline: {
-        color: colors.text,
-        backgroundColor: colors.surfaceSecondary,
-        borderColor: colors.border,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderRadius: 5,
-        paddingHorizontal: 5,
-        paddingVertical: 2,
-      },
-      fence: {
-        color: colors.text,
-        backgroundColor: colors.surfaceSecondary,
-        borderColor: colors.border,
-        borderWidth: 1,
-        borderRadius: 10,
-        padding: 12,
-        marginVertical: 8,
-        fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-        fontSize: 14,
-        lineHeight: 21,
-      },
-      code_block: {
-        color: colors.text,
-        backgroundColor: colors.surfaceSecondary,
-        borderColor: colors.border,
-        borderWidth: 1,
-        borderRadius: 10,
-        padding: 12,
-        marginVertical: 8,
-        fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-        fontSize: 14,
-        lineHeight: 21,
-      },
-      link: { color: colors.primary, textDecorationLine: 'underline' as const },
-      hr: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 16 },
-    }),
-    [colors]
-  );
 
   useEffect(() => () => {
     if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
@@ -156,7 +99,7 @@ export default function AICompanionScreen() {
   };
 
   const loadConversationList = useCallback(async () => {
-    if (!session?.user.id) return [];
+    if (!userId) return [];
     const rows = await db.getAllAsync<Conversation>(`
       SELECT
         id,
@@ -167,10 +110,10 @@ export default function AICompanionScreen() {
       FROM ai_conversations
       WHERE user_id = ?
       ORDER BY updated_at DESC, id DESC
-    `, session.user.id);
+    `, userId);
     setConversations(rows);
     return rows;
-  }, [db, session?.user.id]);
+  }, [db, userId]);
 
   const openConversation = useCallback(async (conversation: Conversation) => {
     stopTyping();
@@ -222,7 +165,7 @@ export default function AICompanionScreen() {
           onPress: () => {
             void (async () => {
               try {
-                await db.runAsync('DELETE FROM ai_conversations WHERE id = ? AND user_id = ?', conversation.id, session?.user.id ?? '');
+                await db.runAsync('DELETE FROM ai_conversations WHERE id = ? AND user_id = ?', conversation.id, userId ?? '');
                 const remaining = await loadConversationList();
                 if (activeConversationId === conversation.id) {
                   const nextConversation = remaining[0];
@@ -283,7 +226,7 @@ export default function AICompanionScreen() {
   );
 
   useEffect(() => {
-    if (!session?.user.id || !selectedCourseId) return;
+    if (!userId || !selectedCourseId) return;
     if (skipNextCourseRestoreRef.current) {
       skipNextCourseRestoreRef.current = false;
       return;
@@ -325,7 +268,7 @@ export default function AICompanionScreen() {
     return () => {
       isActive = false;
     };
-  }, [db, loadConversationList, selectedCourseId, session?.user.id]);
+  }, [db, loadConversationList, selectedCourseId, userId]);
 
   const renderCourseValue = useCallback(
     (value: string) => courses.find((course) => String(course.id) === value)?.name
@@ -346,7 +289,7 @@ export default function AICompanionScreen() {
   );
 
   const sendMessage = async () => {
-    if (!canSend || !courseContext || !session?.user.id) return;
+    if (!canSend || !courseContext || !userId) return;
 
     const prompt = message.trim();
     const defaultApiUrl = Platform.OS === 'android'
@@ -374,7 +317,7 @@ export default function AICompanionScreen() {
           INSERT INTO ai_conversations
             (user_id, course_id, course_name, title, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?)
-        `, session.user.id, courseContext.id, courseContext.name, title, now, now);
+        `, userId, courseContext.id, courseContext.name, title, now, now);
         conversationId = conversationResult.lastInsertRowId;
         setActiveConversationId(conversationId);
       }
@@ -390,7 +333,7 @@ export default function AICompanionScreen() {
         'UPDATE ai_conversations SET updated_at = ? WHERE id = ? AND user_id = ?',
         now,
         conversationId,
-        session.user.id
+        userId
       );
       await loadConversationList();
 
@@ -418,7 +361,7 @@ export default function AICompanionScreen() {
         'UPDATE ai_conversations SET updated_at = ? WHERE id = ? AND user_id = ?',
         responseTime,
         conversationId,
-        session.user.id
+        userId
       );
       await loadConversationList();
       typeAssistantMessage(data.response, String(assistantMessageResult.lastInsertRowId));
@@ -556,7 +499,7 @@ export default function AICompanionScreen() {
                     {isUser ? (
                       <Text style={styles.userMessageText}>{item.content}</Text>
                     ) : item.content ? (
-                      <Markdown style={markdownStyles}>{item.content}</Markdown>
+                      <SafeMarkdown content={item.content} />
                     ) : (
                       <TypingDots color={colors.textSecondary} />
                     )}

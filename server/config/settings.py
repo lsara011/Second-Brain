@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management.utils import get_random_secret_key
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,11 +23,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-sgzq81#_m-a5^*r6ty+x4*f9w2jk)qd*v*f55&kh2y6_b1hj=s'
+DEBUG = os.getenv('DJANGO_DEBUG', 'true').lower() in {'1', 'true', 'yes', 'on'}
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = get_random_secret_key()
+    else:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set in production.')
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -130,12 +136,37 @@ STATIC_URL = 'static/'
 # enforce browser CORS. Restrict this to explicit origins before deployment.
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31_536_000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+if DEBUG:
+    MAILERS = {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        },
+    }
+else:
+    MAILERS = {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+            'OPTIONS': {
+                'host': os.getenv('SMTP_HOST', 'localhost'),
+                'port': int(os.getenv('SMTP_PORT', '587')),
+                'username': os.getenv('SMTP_USERNAME', ''),
+                'password': os.getenv('SMTP_PASSWORD', ''),
+                'use_tls': os.getenv('SMTP_USE_TLS', 'true').lower()
+                in {'1', 'true', 'yes', 'on'},
+                'timeout': 10,
+            },
+        },
+    }

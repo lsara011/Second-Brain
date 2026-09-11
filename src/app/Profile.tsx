@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -27,35 +27,25 @@ type ProfileForm = {
   avatarUrl: string;
 };
 
-const EMPTY_PROFILE: ProfileForm = {
-  fullName: '',
-  grade: '',
-  graduationYear: '',
-  major: '',
-  avatarUrl: '',
-};
+function profileFromMetadata(metadata: Record<string, unknown>): ProfileForm {
+  return {
+    fullName: typeof metadata.full_name === 'string' ? metadata.full_name : '',
+    grade: typeof metadata.grade === 'string' ? metadata.grade : '',
+    graduationYear: typeof metadata.graduation_year === 'string' ? metadata.graduation_year : '',
+    major: typeof metadata.major === 'string' ? metadata.major : '',
+    avatarUrl: typeof metadata.avatar_url === 'string' ? metadata.avatar_url : '',
+  };
+}
 
 export default function ProfileScreen() {
   const { colors } = useAppTheme();
   const { session } = useAuth();
-  const [profile, setProfile] = useState<ProfileForm>(EMPTY_PROFILE);
-  const [draft, setDraft] = useState<ProfileForm>(EMPTY_PROFILE);
+  const initialProfile = profileFromMetadata(session?.user.user_metadata ?? {});
+  const [profile, setProfile] = useState<ProfileForm>(initialProfile);
+  const [draft, setDraft] = useState<ProfileForm>(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    const metadata = session?.user.user_metadata ?? {};
-    const nextProfile = {
-      fullName: metadata.full_name ?? '',
-      grade: metadata.grade ?? '',
-      graduationYear: metadata.graduation_year ?? '',
-      major: metadata.major ?? '',
-      avatarUrl: metadata.avatar_url ?? '',
-    };
-    setProfile(nextProfile);
-    setDraft(nextProfile);
-  }, [session]);
 
   const initials = useMemo(() => {
     const value = profile.fullName || session?.user.email || 'Student';

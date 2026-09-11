@@ -1,5 +1,10 @@
 # SecondBrain
 
+[![CI](https://github.com/lsara011/Second-Brain/actions/workflows/ci.yml/badge.svg)](https://github.com/lsara011/Second-Brain/actions/workflows/ci.yml)
+[![Expo SDK 57](https://img.shields.io/badge/Expo-57-000020?logo=expo)](https://docs.expo.dev/)
+[![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB?logo=react)](https://reactnative.dev/)
+[![Django](https://img.shields.io/badge/Django-6.1-092E20?logo=django)](https://www.djangoproject.com/)
+
 <p align="center">
   <img src="./assets/readme/second-brain-light.png" alt="SecondBrain purple logo on a light background" width="48%" />
   <img src="./assets/readme/second-brain-dark.png" alt="SecondBrain white logo on a dark background" width="48%" />
@@ -24,6 +29,15 @@ The project is founded on a simple principle: AI should support learning, not re
 SecondBrain is in active development. The application supports account creation and login, protected application routes, editable student profiles, semester schedule creation, local class storage, dashboard views, theme settings, and a conversational AI study companion that answers questions in the context of a selected class.
 
 Supabase Authentication manages user accounts and persistent login sessions. The Django backend provides the development-only connection to OpenAI so provider credentials remain outside the mobile and web application. The AI Companion provides a two-sided chat interface, formatted Markdown and code output, typewriter-style responses, and device-local conversation history. Authentication of Django API requests, rate limiting, production deployment, and cloud synchronization of application data still need to be implemented before public release.
+
+## Engineering highlights
+
+- Built a cross-platform TypeScript client for Android, iOS, and web from one Expo codebase.
+- Separated public client configuration from private server credentials through a Django API boundary.
+- Modeled relational schedules, classes, conversations, and messages with indexed SQLite tables and cascade deletion.
+- Implemented session-aware routing, persistent Supabase authentication, and per-user profile metadata.
+- Added contextual multi-turn AI conversations with input validation, educational guardrails, Markdown rendering, and local history restoration.
+- Added automated linting, type checking, Django API tests, web export verification, and GitHub Actions CI.
 
 ## Implemented features
 
@@ -110,8 +124,7 @@ The client application currently uses:
 - **Expo Router** for file-based navigation and screen transitions.
 - **Expo SQLite** for persistent on-device schedules, classes, and AI conversations.
 - **Supabase Authentication** for accounts, persistent sessions, and user profile metadata.
-- **React Native Markdown Display** for rendering structured AI responses and code blocks.
-- **Punycode** as the native Metro compatibility dependency required by the Markdown parser.
+- A bounded native Markdown renderer for structured AI responses, safe links, and horizontally scrollable code blocks.
 - **React Native Paper** and **Expo UI** for interface components.
 - **React Native Reanimated** and **React Native Gesture Handler** for animations and interactions.
 - **Tamagui** for interface primitives and toast notifications.
@@ -189,7 +202,7 @@ SecondBrain should be designed to:
 - Generate quizzes, flashcards, and practice sessions.
 - Support document or course-note uploads with source-grounded answers.
 - Add progress tracking, reminders, and study recommendations.
-- Introduce automated tests, monitoring, and AI-quality evaluations.
+- Expand client component tests, monitoring, and AI-quality evaluations.
 
 ## Getting started
 
@@ -203,7 +216,11 @@ SecondBrain should be designed to:
 
 ### Run the application
 
-Create a local `.env.local` file in the project root. Supply your own values and never commit this file:
+Copy the safe template, then replace its placeholders with your local development values:
+
+```bash
+cp .env.example .env.local
+```
 
 ```dotenv
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
@@ -228,7 +245,17 @@ npm run web
 
 ### Run the development backend
 
-Create `server/.env` with the private backend settings required by your local environment. This file is ignored by Git. The current Django settings do not load it automatically, so export its variables into the terminal session before starting the server:
+Create and activate a virtual environment, install the pinned dependencies, and copy the safe backend environment template:
+
+```bash
+cd server
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+Replace the placeholders in `server/.env`. This private file is ignored by Git:
 
 ```dotenv
 OPENAI_API_KEY=your_private_openai_api_key
@@ -236,12 +263,11 @@ DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,10.0.2.2,your_computer_lan_address
 ```
 
 ```bash
-cd server
 set -a
 source .env
 set +a
-./.venv/bin/python manage.py migrate
-./.venv/bin/python manage.py runserver 0.0.0.0:8000
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
 ```
 
 For an iOS simulator or local web browser, the API URL can normally use `127.0.0.1`. The Android emulator uses `10.0.2.2` to reach the host computer. A physical phone must use the development computer's local network address, and Django must allow that host.
@@ -249,10 +275,16 @@ For an iOS simulator or local web browser, the API URL can normally use `127.0.0
 ### Validate the project
 
 ```bash
-npx tsc --noEmit
+npm run validate
 ./server/.venv/bin/python server/manage.py check
-./server/.venv/bin/python server/manage.py test
+./server/.venv/bin/python server/manage.py test assistant
 ```
+
+## Testing and continuous integration
+
+The Django test suite covers HTTP method restrictions, malformed JSON, required fields, input-length limits, conversation-history validation, OpenAI request construction, safe provider-error handling, and production-mode endpoint behavior. OpenAI calls are mocked, so tests do not consume API credits.
+
+The GitHub Actions workflow runs on pushes to `main` and on pull requests. It installs dependencies from lock files, lints and type-checks the client, verifies a static web export, runs Django system checks, and executes the backend tests.
 
 ## Security notes
 
