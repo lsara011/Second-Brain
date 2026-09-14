@@ -14,6 +14,19 @@ SecondBrain is an AI-powered study assistant designed for high school and univer
 
 The project is founded on a simple principle: AI should support learning, not replace it. SecondBrain will guide students through problems, ask useful questions, explain ideas in different ways, and help create study plans. It will not complete coursework, assessments, or exams on a student's behalf. Educators remain essential to the learning process, and this application is intended to complement their teaching.
 
+## Demo
+
+<p align="center">
+  <img src="./assets/readme/login-demo.jpg" alt="SecondBrain login screen with email and password fields" width="23%" />
+  <img src="./assets/readme/dashboard-demo.jpg" alt="SecondBrain dashboard showing saved Fall 2026 classes" width="23%" />
+  <img src="./assets/readme/schedule-builder-demo.jpg" alt="SecondBrain schedule builder with class times, meeting days, professor, and location fields" width="23%" />
+  <img src="./assets/readme/ai-companion-demo.jpg" alt="Atlas AI study companion explaining JavaScript array destructuring with a formatted code example" width="23%" />
+</p>
+
+<p align="center">
+  <sub>Authentication &nbsp;•&nbsp; Dashboard &nbsp;•&nbsp; Schedule Builder &nbsp;•&nbsp; Atlas AI Companion</sub>
+</p>
+
 ## Project goals
 
 - Organize classes, schedules, assignments, and exam dates.
